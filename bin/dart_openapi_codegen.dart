@@ -505,10 +505,11 @@ String generateApi(List<Operation> operations) {
 }
 
 void main(List<String> arguments) async {
+  final outputDir = Directory(arguments[0]);
   Map<String, dynamic> api =
-      jsonDecode(await File(arguments[0]).readAsString());
-  List<dynamic> rules = arguments.length > 1
-      ? jsonDecode(await File(arguments[1]).readAsString())
+      jsonDecode(await File(arguments[1]).readAsString());
+  List<dynamic> rules = arguments.length > 2
+      ? jsonDecode(await File(arguments[2]).readAsString())
       : [];
 
   final operations = operationsFromApi(api);
@@ -517,6 +518,6 @@ void main(List<String> arguments) async {
   numberConflicts(operations);
   final model = generateModel(operations);
   final dartApi = generateApi(operations);
-  await File('model.dart').writeAsString(model);
-  await File('api.dart').writeAsString(dartApi);
+  await File.fromUri(outputDir.uri.resolve('model.dart')).writeAsString(model);
+  await File.fromUri(outputDir.uri.resolve('api.dart')).writeAsString(dartApi);
 }
