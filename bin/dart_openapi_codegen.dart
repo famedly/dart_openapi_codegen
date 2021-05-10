@@ -1,0 +1,522 @@
+import 'dart:convert';
+import 'dart:collection';
+import 'dart:io';
+
+extension Capitalization on String {
+  String get capitalized => this[0].toUpperCase() + substring(1);
+  String get uncapitalized => this[0].toLowerCase() + substring(1);
+}
+
+String className(String s) => fixup(s
+    .split(RegExp('[- _:./{}<>]'))
+    .where((x) => x.isNotEmpty)
+    .map((x) => x.capitalized)
+    .join(''));
+
+String variableName(String s) => className(s).uncapitalized;
+
+String fixup(String s) =>
+    ['default', 'is'].contains(s.toLowerCase()) ? s + '\$' : s;
+
+String stripDoc(String s) =>
+    s.replaceAll(RegExp('/\\*(\\*(?!/)|[^*])*\\*/'), '');
+
+abstract class Schema {
+  String get dartType;
+  String get definition;
+  String get dartFromJson;
+  List<DefinitionSchema> get definitionSchemas;
+
+  factory Schema.fromJson(Map<String, dynamic> json, String baseName,
+      {bool required = true}) {
+    if (!required) return OptionalSchema(Schema.fromJson(json, baseName));
+    final type = json['type'];
+    if (type is List) {
+      if (type.length == 2 && type[0] is String && type[1] == 'null') {
+        return Schema.fromJson({...json, 'type': type[0]}, baseName);
+      } else {
+        return UnknownSchema();
+      }
+    } else if (type == 'object' || json['allOf'] != null) {
+      if (json['properties'] == null &&
+          json['additionalProperties'] == null &&
+          json['allOf'] == null) {
+        return MapSchema.freeForm();
+      }
+      final obj = ObjectSchema.fromJson(json, baseName);
+      if (obj.allProperties.isEmpty) {
+        if (obj.inheritedAdditionalProperties != null) {
+          return MapSchema.fromJson(json, baseName);
+        } else {
+          return VoidSchema();
+        }
+      }
+      return obj;
+    } else if (type == 'array') {
+      return ArraySchema.fromJson(json, baseName);
+    } else if (json['enum'] != null) {
+      return EnumSchema.fromJson(json, baseName);
+    } else {
+      return UnknownSchema.fromJson(json);
+    }
+  }
+}
+
+abstract class DefinitionSchema extends Schema {
+  abstract String title;
+  String? get description;
+
+  factory DefinitionSchema._() => throw UnimplementedError();
+}
+
+class ObjectParam {
+  Schema schema;
+  String? description;
+  ObjectParam({required this.schema, required this.description});
+  ObjectParam.fromJson(Map<String, dynamic> json, String baseName,
+      {bool required = true})
+      : schema = Schema.fromJson({...json, 'description': null}, baseName,
+            required: required),
+        description = json['description'];
+}
+
+class ObjectSchema implements DefinitionSchema {
+  Map<String, ObjectParam> properties;
+  Map<String, ObjectParam> get inheritedProperties =>
+      Map.fromEntries(baseClasses.expand((c) => c.allProperties.entries));
+  Map<String, ObjectParam> get allProperties {
+    if (properties.keys.any((k) => inheritedProperties.keys.contains(k))) {
+      print('${className(title)} bad');
+      baseClasses.clear();
+    }
+    return inheritedProperties..addAll(properties);
+  }
+
+  Schema? additionalProperties;
+  Schema? get inheritedAdditionalProperties {
+    final res =
+        baseClasses.map((x) => x.additionalProperties).whereType<Schema>();
+    return additionalProperties ?? (res.isNotEmpty ? res.single : null);
+  }
+
+  List<ObjectSchema> baseClasses;
+  @override
+  String title;
+  @override
+  String? description;
+  @override
+  String get dartType => className(title);
+  @override
+  String get dartFromJson => '$dartType.fromJson';
+  @override
+  String get definition =>
+      'class $dartType ${baseClasses.isNotEmpty ? 'implements ${baseClasses.map((c) => className(c.title)).join(', ')} ' : ''}{\n'
+          '  $dartType({\n' +
+      allProperties.entries
+          .map((e) => '    required this.${variableName(e.key)},\n')
+          .join() +
+      (inheritedAdditionalProperties != null
+          ? '    this.additionalProperties = const {},\n'
+          : '') +
+      '  });\n\n' +
+      '  $dartType.fromJson(Map<String, dynamic> json) :\n' +
+      allProperties.entries
+          .map((e) =>
+              '    ${variableName(e.key)} = ${e.value.schema.dartFromJson}(json[\'${e.key}\'])')
+          .followedBy([
+        if (inheritedAdditionalProperties != null)
+          '    additionalProperties = Map.fromEntries(json.entries.where((e) => ![${allProperties.keys.map((k) => "'$k'").join(', ')}].contains(e.key)).map((e) => MapEntry(e.key, ${inheritedAdditionalProperties!.dartFromJson}(e.value))))'
+      ]).join(',\n') +
+      ';\n'
+          '  Map<String, dynamic> toJson() => {};\n' +
+      allProperties.entries
+          .map((e) =>
+              '  /** ${e.value.description ?? ''} */\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
+          .join('') +
+      (inheritedAdditionalProperties != null
+          ? '  Map<String, ${inheritedAdditionalProperties!.dartType}> additionalProperties;\n'
+          : '') +
+      '}\n';
+  @override
+  List<DefinitionSchema> get definitionSchemas => allProperties.values
+      .expand((x) => x.schema.definitionSchemas)
+      .followedBy(additionalProperties?.definitionSchemas ?? [])
+      .followedBy(baseClasses.expand((c) => c.definitionSchemas))
+      .followedBy([this]).toList();
+
+  ObjectSchema._fromJson(Map<String, dynamic> json, String baseName)
+      : properties = SplayTreeMap.from((json['properties'] as Map? ?? {}).map(
+            (k, v) => MapEntry(
+                k,
+                ObjectParam.fromJson(v, className(k),
+                    required: json['required']?.contains(k) ?? false)))),
+        additionalProperties = (json['additionalProperties'] != null)
+            ? Schema.fromJson(
+                json['additionalProperties'] is Map
+                    ? json['additionalProperties']
+                    : {},
+                className(baseName))
+            : null,
+        title = json['title'] ?? baseName,
+        description = json['description'],
+        baseClasses = (json['allOf'] as List? ?? [])
+            .map((j) => Schema.fromJson(j, baseName) as ObjectSchema)
+            .toList();
+
+  factory ObjectSchema.fromJson(Map<String, dynamic> json, String baseName) {
+    final schema = ObjectSchema._fromJson(json, baseName);
+    return schema.baseClasses.length == 1 && schema.properties.isEmpty
+        ? schema.baseClasses.single
+        : schema;
+  }
+}
+
+class MapSchema implements Schema {
+  Schema? valueSchema;
+
+  @override
+  String get dartType => 'Map<String, ${valueSchema?.dartType ?? 'dynamic'}>';
+  @override
+  String get dartFromJson => 'castMap<${valueSchema?.dartType ?? 'dynamic'}>';
+  @override
+  String get definition => '';
+  @override
+  List<DefinitionSchema> get definitionSchemas =>
+      valueSchema?.definitionSchemas ?? [];
+
+  MapSchema.freeForm();
+  MapSchema.fromJson(Map<String, dynamic> json, String baseName)
+      : valueSchema = json['additionalProperties'] != null
+            ? Schema.fromJson(json['additionalProperties'], baseName)
+            : null;
+}
+
+class ArraySchema implements Schema {
+  Schema items;
+  @override
+  String get dartType => 'List<${items.dartType}>';
+  @override
+  String get dartFromJson => 'castArray<${items.dartType}>';
+  @override
+  List<DefinitionSchema> get definitionSchemas => items.definitionSchemas;
+
+  @override
+  String get definition => items.definition;
+
+  ArraySchema.fromJson(Map<String, dynamic> json, String baseName)
+      : items = Schema.fromJson(json['items'], baseName);
+}
+
+class EnumSchema implements DefinitionSchema {
+  @override
+  String title;
+  List<String> values;
+  @override
+  String get dartType => title;
+  @override
+  String get dartFromJson =>
+      '((v) => {${values.map((v) => "'$v': $dartType.${variableName(v)}").join(', ')}}[v]!)';
+  @override
+  String get definition =>
+      'enum $dartType {\n  ${(values.toList()..sort()).map(variableName).join(', ')}\n}\n';
+  @override
+  String? description;
+  @override
+  List<DefinitionSchema> get definitionSchemas => [this];
+
+  EnumSchema.fromJson(Map<String, dynamic> json, String baseName)
+      : title = baseName,
+        values = json['enum'].cast<String>(),
+        description = json['description'];
+}
+
+class UnknownSchema implements Schema {
+  String? type;
+  @override
+  String get dartType =>
+      {
+        'string': 'String',
+        'integer': 'int',
+        'boolean': 'bool',
+        'file': 'FileResponse'
+      }[type] ??
+      'dynamic';
+  @override
+  String get dartFromJson => type == 'file' ? 'ignoreFile' : '';
+  @override
+  String get definition => '';
+  @override
+  List<DefinitionSchema> get definitionSchemas => [];
+
+  UnknownSchema();
+  UnknownSchema.fromJson(Map<String, dynamic> json) : type = json['type'];
+}
+
+class VoidSchema implements Schema {
+  @override
+  String get dartType => 'void';
+  @override
+  String get definition => '';
+  @override
+  String get dartFromJson => 'ignore';
+  @override
+  List<DefinitionSchema> get definitionSchemas => [];
+}
+
+class OptionalSchema implements Schema {
+  @override
+  String get dartType => '${inner.dartType}?';
+  @override
+  String get definition => inner.definition;
+  @override
+  String get dartFromJson => inner.dartFromJson;
+  @override
+  List<DefinitionSchema> get definitionSchemas => inner.definitionSchemas;
+  Schema inner;
+  OptionalSchema._(this.inner);
+  factory OptionalSchema(Schema schema) =>
+      schema is OptionalSchema ? schema : OptionalSchema._(schema);
+}
+
+enum ParameterType { path, query, body, header }
+
+class Parameter {
+  Schema schema;
+  ParameterType type;
+  String? description;
+
+  Parameter.fromJson(Map<String, dynamic> json, String baseName)
+      : schema = Schema.fromJson(
+            json['schema'] ?? {...json, 'description': null},
+            className(json['in'] != 'body' ? json['name'] : baseName),
+            required: json['required'] ?? false),
+        type = ParameterType.values
+            .singleWhere((x) => x.toString().split('.').last == json['in']),
+        description = json['description'];
+}
+
+class Operation {
+  Operation(
+      {required this.id,
+      required this.description,
+      required this.path,
+      required this.method,
+      required this.response,
+      required this.deprecated,
+      this.parameters = const {}});
+  String id;
+  String? description;
+  String path;
+  String method;
+  Schema? response;
+  bool deprecated;
+  Map<String, Parameter> parameters;
+  Set<DefinitionSchema> get definitionSchemas => {
+        ...parameters.values.expand((param) => param.schema.definitionSchemas),
+        if (response != null) ...response!.definitionSchemas
+      };
+
+  String get dartUriString =>
+      "'" +
+      path
+          .split('/')
+          .map((c) => (c.startsWith('{') && c.endsWith('}'))
+              ? '\${Uri.encodeComponent(${c.substring(1, c.length - 1)}.toString())}'
+              : c)
+          .join('/') +
+      "'";
+
+  String get dartQueryMap =>
+      '{\n' +
+      parameters.entries
+          .where((e) => e.value.type == ParameterType.query)
+          .map((e) => "      '${e.key}': ${variableName(e.key)}.toString(),\n")
+          .join('') +
+      '    }';
+
+  String get dartBody {
+    final result = parameters.keys.cast<String?>().singleWhere(
+        (k) => parameters[k]?.type == ParameterType.body,
+        orElse: () => null);
+    return (result != null) ? '${variableName(result)}' : 'null';
+  }
+}
+
+List<Operation> operationsFromApi(Map<String, dynamic> api) {
+  final operations = <Operation>[];
+  final Map<String, dynamic> paths = api['paths'];
+  paths.forEach((path, methods) {
+    methods.cast<String, Map<String, dynamic>>().forEach((method, mcontent) {
+      final param = Map<String, Parameter>.fromEntries(
+          (mcontent['parameters'] as List<dynamic>? ?? []).map((parameter) =>
+              MapEntry(
+                  variableName(parameter['name']),
+                  Parameter.fromJson(
+                      parameter, className(mcontent['operationId'])))));
+
+      final Map<String, dynamic> responses = mcontent['responses'];
+      Schema? responseSchema;
+      responses.forEach((response, rcontent) {
+        final Map<String, dynamic>? schema = rcontent['schema'];
+        if (schema != null) {
+          final ps = Schema.fromJson(
+              schema,
+              className(mcontent['operationId']) +
+                  (response == '200' ? 'Response' : className(response)));
+          if (response == '200') responseSchema = ps;
+        }
+      });
+
+      operations.add(Operation(
+        id: mcontent['operationId'],
+        description: mcontent['description'],
+        path: path,
+        method: method,
+        response: responseSchema,
+        parameters: param,
+        deprecated: mcontent['deprecated'] ?? false,
+      ));
+    });
+  });
+  return operations;
+}
+
+void applyRules(List<Operation> operations, List<dynamic> rules) {
+  final definitionSchemas = operations.expand((op) => op.definitionSchemas);
+  final definitionSchemasMap = <String, List<DefinitionSchema>>{};
+  for (final schema in definitionSchemas) {
+    (definitionSchemasMap[schema.dartType] ??= []).add(schema);
+  }
+
+  for (final rule in rules) {
+    final String from = rule['from'], to = rule['to'];
+    final String? property = rule['property'],
+        baseOf = rule['baseOf'],
+        usedBy = rule['usedBy'],
+        base = rule['base'];
+    final bool? isEnum = rule['enum'];
+    final candidates = (definitionSchemasMap[from] ?? []);
+    final matchedSources = <String>{};
+    for (final candidate in candidates) {
+      if ((property == null ||
+              (candidate is ObjectSchema &&
+                  candidate.properties[property] != null)) &&
+          (baseOf == null ||
+              (definitionSchemasMap[baseOf] ?? []).any((c) =>
+                  c is ObjectSchema && c.baseClasses.contains(candidate))) &&
+          (usedBy == null ||
+              (definitionSchemasMap[usedBy] ?? [])
+                  .any((c) => c.definitionSchemas.contains(candidate)) ||
+              operations
+                  .where((op) => op.id == usedBy)
+                  .any((op) => op.definitionSchemas.contains(candidate))) &&
+          (base == null ||
+              (candidate is ObjectSchema &&
+                  candidate.baseClasses.any((b) => b.title == base))) &&
+          (isEnum == null || isEnum == candidate is EnumSchema)) {
+        matchedSources.add(candidate.definition);
+      }
+    }
+    for (final candidate in candidates) {
+      if (matchedSources.contains(candidate.definition)) {
+        candidate.title = to;
+      }
+    }
+  }
+}
+
+void numberConflicts(List<Operation> operations) {
+  final definitionSchemas = operations.expand((op) => op.definitionSchemas);
+  final definitionSchemasMap = <String, List<DefinitionSchema>>{};
+  for (final schema in definitionSchemas) {
+    (definitionSchemasMap[schema.dartType] ??= []).add(schema);
+  }
+
+  for (final duplicates in definitionSchemasMap.values) {
+    final defs = duplicates.map((x) => x.definition).toSet();
+    if (defs.length > 1) {
+      final defList = defs.toList();
+      var prevDefs = Map<Schema, String>.fromEntries(
+          duplicates.map((d) => MapEntry(d, d.definition)));
+      duplicates
+          .forEach((d) => d.title += '\$${defList.indexOf(prevDefs[d]!) + 1}');
+    }
+  }
+}
+
+void resolveDocConflicts(List<Operation> operations) {
+  final definitionSchemas = operations.expand((op) => op.definitionSchemas);
+  final stripDocMap = <String, List<DefinitionSchema>>{};
+  for (final schema in definitionSchemas) {
+    (stripDocMap[stripDoc(schema.definition)] ??= []).add(schema);
+  }
+  stripDocMap.values.forEach((duplicates) {
+    if (duplicates.any((x) => x.definition != duplicates.first.definition)) {
+      duplicates.forEach((schema) => (schema as ObjectSchema)
+          .properties
+          .values
+          .forEach((p) => p.description = null));
+    }
+  });
+}
+
+String generateModel(List<Operation> operations) {
+  final definitionSchemas = operations.expand((op) => op.definitionSchemas);
+  final definitionSchemasMap = <String, List<DefinitionSchema>>{};
+  for (final schema in definitionSchemas) {
+    (definitionSchemasMap[schema.dartType] ??= []).add(schema);
+  }
+
+  return "import 'internal.dart';\n" +
+      definitionSchemasMap.values
+          .map((v) =>
+              '/** ' +
+              v
+                  .where((v) => v.description != null)
+                  .map((v) => '${v.description}\n')
+                  .toSet()
+                  .toList()
+                  .join('') +
+              '*/\n' +
+              v.first.definition)
+          .join('\n');
+}
+
+String generateApi(List<Operation> operations) {
+  var ops =
+      "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n"
+      '\n';
+  ops +=
+      'enum RequestType {\n  get, post, put, delete\n}\n\nclass Api {\n  Future<Map<String, dynamic>> request(RequestType requestType, String path, Map<String, dynamic> query, dynamic body) async => {};\n';
+  for (final op in operations) {
+    ops += '\n\n';
+    ops +=
+        '  /** ${((op.description ?? '') + op.parameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${e.key}] ${e.value.description}').join('')).replaceAll('\n', '\n    ')}\n*/\n';
+    if (op.deprecated) ops += '  @deprecated\n';
+    ops +=
+        '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.parameters.entries.map((e) => '${e.value.schema.dartType} ${e.key}').join(', ')}) async {\n    ';
+    ops += 'return ${op.response?.dartFromJson ?? 'ignore'}(';
+    ops +=
+        'await request(RequestType.${op.method}, ${op.dartUriString}, ${op.dartQueryMap}, ${op.dartBody}))';
+    ops += ';\n  }';
+  }
+  ops += '}\n';
+  return ops;
+}
+
+void main(List<String> arguments) async {
+  Map<String, dynamic> api =
+      jsonDecode(await File(arguments[0]).readAsString());
+  List<dynamic> rules = arguments.length > 1
+      ? jsonDecode(await File(arguments[1]).readAsString())
+      : [];
+
+  final operations = operationsFromApi(api);
+  resolveDocConflicts(operations);
+  applyRules(operations, rules);
+  numberConflicts(operations);
+  final model = generateModel(operations);
+  final dartApi = generateApi(operations);
+  await File('model.dart').writeAsString(model);
+  await File('api.dart').writeAsString(dartApi);
+}
