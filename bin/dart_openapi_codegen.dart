@@ -1,3 +1,5 @@
+import 'package:yaml/yaml.dart';
+
 import 'dart:convert';
 import 'dart:collection';
 import 'dart:io';
@@ -509,7 +511,7 @@ void main(List<String> arguments) async {
   Map<String, dynamic> api =
       jsonDecode(await File(arguments[1]).readAsString());
   List<dynamic> rules = arguments.length > 2
-      ? jsonDecode(await File(arguments[2]).readAsString())
+      ? loadYaml(await File(arguments[2]).readAsString())
       : [];
 
   final operations = operationsFromApi(api);
