@@ -66,6 +66,7 @@ abstract class Schema {
 
 abstract class DefinitionSchema extends Schema {
   abstract String title;
+  abstract String nameSource;
   String? get description;
 
   factory DefinitionSchema._() => throw UnimplementedError();
@@ -104,6 +105,8 @@ class ObjectSchema implements DefinitionSchema {
   List<ObjectSchema> baseClasses;
   @override
   String title;
+  @override
+  String nameSource;
   @override
   String? description;
   @override
@@ -160,6 +163,7 @@ class ObjectSchema implements DefinitionSchema {
                 className(baseName))
             : null,
         title = json['title'] ?? baseName,
+        nameSource = json['title'] == null ? 'generated' : 'spec',
         description = json['description'],
         baseClasses = (json['allOf'] as List? ?? [])
             .map((j) => Schema.fromJson(j, baseName) as ObjectSchema)
@@ -212,6 +216,8 @@ class ArraySchema implements Schema {
 class EnumSchema implements DefinitionSchema {
   @override
   String title;
+  @override
+  String nameSource = 'generated';
   List<String> values;
   @override
   String get dartType => title;
@@ -423,6 +429,7 @@ void applyRules(List<Operation> operations, List<dynamic> rules) {
     for (final candidate in candidates) {
       if (matchedSources.contains(candidate.definition)) {
         candidate.title = to;
+        candidate.nameSource = 'rule override ${candidate.nameSource}';
       }
     }
   }
@@ -470,7 +477,7 @@ String generateModel(List<Operation> operations) {
     (definitionSchemasMap[schema.dartType] ??= []).add(schema);
   }
 
-  return "import 'internal.dart';\n" +
+  return "import 'internal.dart';\n\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
       definitionSchemasMap.values
           .map((v) =>
               '/** ' +
@@ -481,6 +488,7 @@ String generateModel(List<Operation> operations) {
                   .toList()
                   .join('') +
               '*/\n' +
+              "@_NameSource('${v.first.nameSource}')\n" +
               v.first.definition)
           .join('\n');
 }
