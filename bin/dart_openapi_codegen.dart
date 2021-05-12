@@ -290,7 +290,8 @@ class Parameter {
   Parameter.fromJson(Map<String, dynamic> json, String baseName)
       : schema = Schema.fromJson(
             json['schema'] ?? {...json, 'description': null},
-            className(json['in'] != 'body' ? json['name'] : baseName),
+            className(
+                json['in'] != 'body' ? json['name'] : baseName + 'Request'),
             required: json['required'] ?? false),
         type = ParameterType.values
             .singleWhere((x) => x.toString().split('.').last == json['in']),
