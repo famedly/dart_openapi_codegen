@@ -27,6 +27,7 @@ abstract class Schema {
   String get dartType;
   String get definition;
   String dartFromJson(String input);
+  String dartToJsonEntry(String key, String input);
   List<DefinitionSchema> get definitionSchemas;
 
   factory Schema.fromJson(Map<String, dynamic> json, String baseName,
@@ -120,13 +121,15 @@ class ObjectSchema implements DefinitionSchema {
   @override
   String dartFromJson(String input) => '$dartType.fromJson($input)';
   @override
+  String dartToJsonEntry(String key, String input) => "'$key': $input";
+  @override
   String get dartToJsonMap =>
       '{\n' +
       (inheritedAdditionalProperties != null
           ? '      ...additionalProperties,\n'
           : '') +
       properties.entries
-          .map((e) => "      '${e.key}': ${variableName(e.key)},\n")
+          .map((e) => '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
   @override
@@ -203,6 +206,8 @@ class MapSchema implements Schema {
       ? '($input as Map<String, dynamic>).map((k, v) => MapEntry(k, ${valueSchema!.dartFromJson('v')}))'
       : '$input as Map<String, dynamic>';
   @override
+  String dartToJsonEntry(String key, String input) => "'$key': $input";
+  @override
   String get definition => '';
   @override
   List<DefinitionSchema> get definitionSchemas =>
@@ -222,6 +227,8 @@ class ArraySchema implements Schema {
   @override
   String dartFromJson(String input) =>
       '($input as List).map((v) => ${items.dartFromJson('v')}).toList()';
+  @override
+  String dartToJsonEntry(String key, String input) => "'$key': $input";
   @override
   List<DefinitionSchema> get definitionSchemas => items.definitionSchemas;
 
@@ -243,6 +250,8 @@ class EnumSchema implements DefinitionSchema {
   @override
   String dartFromJson(String input) =>
       '{${values.map((v) => "'$v': $dartType.${variableName(v)}").join(', ')}}[$input]!';
+  @override
+  String dartToJsonEntry(String key, String input) => "'$key': {${values.map((v) => "$dartType.${variableName(v)}: '$v'").join(', ')}}[$input]!";
   @override
   String get definition =>
       'enum $dartType {\n  ${(values.toList()..sort()).map(variableName).join(', ')}\n}\n';
@@ -272,6 +281,8 @@ class UnknownSchema implements Schema {
   String dartFromJson(String input) =>
       type == 'file' ? 'ignoreFile($input)' : '$input as $dartType';
   @override
+  String dartToJsonEntry(String key, String input) => "'$key': $input";
+  @override
   String get definition => '';
   @override
   List<DefinitionSchema> get definitionSchemas => [];
@@ -288,6 +299,8 @@ class VoidSchema implements Schema {
   @override
   String dartFromJson(String input) => 'ignore($input)';
   @override
+  String dartToJsonEntry(String key, String input) => "'$key': {}";
+  @override
   List<DefinitionSchema> get definitionSchemas => [];
 }
 
@@ -299,6 +312,8 @@ class OptionalSchema implements Schema {
   @override
   String dartFromJson(String input) =>
       '((v) => v != null ? ${inner.dartFromJson('v')} : null)($input)';
+  @override
+  String dartToJsonEntry(String key, String input) => 'if ($input != null) ${inner.dartToJsonEntry(key, input)}';
   @override
   List<DefinitionSchema> get definitionSchemas => inner.definitionSchemas;
   Schema inner;
@@ -370,6 +385,7 @@ class Operation {
       "'" +
       path
           .split('/')
+          .where((c) => c.isNotEmpty)
           .map((c) => (c.startsWith('{') && c.endsWith('}'))
               ? '\${Uri.encodeComponent(${c.substring(1, c.length - 1)}.toString())}'
               : c)
@@ -380,7 +396,7 @@ class Operation {
       '{\n' +
       parameters.entries
           .where((e) => e.value.type == ParameterType.query)
-          .map((e) => "      '${e.key}': ${variableName(e.key)}.toString(),\n")
+          .map((e) => '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
 
