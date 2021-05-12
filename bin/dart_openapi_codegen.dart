@@ -333,6 +333,7 @@ class Operation {
       required this.path,
       required this.method,
       required this.response,
+      required this.accessToken,
       required this.deprecated,
       required this.unpackedBody,
       this.parameters = const {}});
@@ -341,6 +342,7 @@ class Operation {
   String path;
   String method;
   Schema? response;
+  bool accessToken;
   bool deprecated;
   bool unpackedBody;
   Map<String, Parameter> parameters;
@@ -427,6 +429,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
         method: method,
         response: responseSchema,
         parameters: param,
+        accessToken: mcontent['security']?[0]?['accessToken'] != null,
         deprecated: mcontent['deprecated'] ?? false,
         unpackedBody: true,
       ));
@@ -542,7 +545,7 @@ String generateApi(List<Operation> operations) {
   var ops =
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
-      "import 'package:http/http.dart';\nimport 'dart:convert';\n\nclass Api {\n  Uri? baseUri;\n  Client httpClient = Client();\n  Api({this.baseUri});\n";
+      "import 'package:http/http.dart';\nimport 'dart:convert';\n\nclass Api {\n  Uri? baseUri;\n  String? bearerToken;\n  Client httpClient = Client();\n  Api({this.baseUri, this.bearerToken});\n";
   for (final op in operations) {
     ops += '\n';
     ops +=
@@ -557,6 +560,10 @@ String generateApi(List<Operation> operations) {
     ops += ');\n';
     ops +=
         "    final request = Request('${op.method.toUpperCase()}', baseUri!.resolveUri(requestUri));\n";
+    if (op.accessToken) {
+      ops +=
+          "    request.headers['authorization'] = 'Bearer \${bearerToken!}';\n";
+    }
     if (op.dartBody != null) {
       ops += "    request.headers['content-type'] = 'application/json';\n"
           '    request.bodyBytes = utf8.encode(jsonEncode(${op.dartBody!}));\n';
