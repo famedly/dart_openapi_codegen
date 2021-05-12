@@ -75,7 +75,7 @@ abstract class DefinitionSchema extends Schema {
 class ObjectParam {
   Schema schema;
   String? description;
-  ObjectParam({required this.schema, required this.description});
+  ObjectParam(this.schema, [this.description]);
   ObjectParam.fromJson(Map<String, dynamic> json, String baseName,
       {bool required = true})
       : schema = Schema.fromJson({...json, 'description': null}, baseName,
@@ -94,6 +94,12 @@ class ObjectSchema implements DefinitionSchema {
     }
     return inheritedProperties..addAll(properties);
   }
+
+  Map<String, ObjectParam> get dartAllProperties => {
+        ...allProperties,
+        if (inheritedAdditionalProperties != null)
+          'additionalProperties': ObjectParam(inheritedAdditionalProperties!),
+      };
 
   Schema? additionalProperties;
   Schema? get inheritedAdditionalProperties {
@@ -307,6 +313,7 @@ class Parameter {
   Schema schema;
   ParameterType type;
   String? description;
+  Parameter(this.schema, this.type, [this.description]);
 
   Parameter.fromJson(Map<String, dynamic> json, String baseName)
       : schema = Schema.fromJson(
@@ -327,6 +334,7 @@ class Operation {
       required this.method,
       required this.response,
       required this.deprecated,
+      required this.unpackedBody,
       this.parameters = const {}});
   String id;
   String? description;
@@ -334,11 +342,25 @@ class Operation {
   String method;
   Schema? response;
   bool deprecated;
+  bool unpackedBody;
   Map<String, Parameter> parameters;
   Map<String, Parameter> get queryParameters => Map.fromEntries(
       parameters.entries.where((e) => e.value.type == ParameterType.query));
+  Map<String, Parameter> get dartParameters => unpackedBody
+      ? Map.fromEntries(parameters.entries.expand((e) {
+          final s = e.value.schema;
+          if (e.value.type == ParameterType.body && s is ObjectSchema) {
+            return s.dartAllProperties.entries.map((e) => MapEntry(
+                e.key,
+                Parameter(
+                    e.value.schema, ParameterType.body, e.value.description)));
+          }
+          return [e];
+        }))
+      : parameters;
   Set<DefinitionSchema> get definitionSchemas => {
-        ...parameters.values.expand((param) => param.schema.definitionSchemas),
+        ...dartParameters.values
+            .expand((param) => param.schema.definitionSchemas),
         if (response != null) ...response!.definitionSchemas
       };
 
@@ -364,7 +386,12 @@ class Operation {
     final bodyParams =
         parameters.entries.where((e) => e.value.type == ParameterType.body);
     if (bodyParams.isEmpty) return null;
-    return variableName(bodyParams.single.key);
+    final bodyParam = bodyParams.single;
+    final bodySchema = bodyParam.value.schema;
+    if (unpackedBody && bodySchema is ObjectSchema) {
+      return bodySchema.dartToJsonMap;
+    }
+    return variableName(bodyParam.key);
   }
 }
 
@@ -401,6 +428,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
         response: responseSchema,
         parameters: param,
         deprecated: mcontent['deprecated'] ?? false,
+        unpackedBody: true,
       ));
     });
   });
@@ -518,10 +546,10 @@ String generateApi(List<Operation> operations) {
   for (final op in operations) {
     ops += '\n';
     ops +=
-        '  /** ${((op.description ?? '') + op.parameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n    ')}\n  */\n';
+        '  /** ${((op.description ?? '') + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n    ')}\n  */\n';
     if (op.deprecated) ops += '  @deprecated\n';
     ops +=
-        '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.parameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').join(', ')}) async {\n';
+        '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').join(', ')}) async {\n';
     ops += '    final requestUri = Uri(path: ${op.dartUriString}';
     if (op.queryParameters.isNotEmpty) {
       ops += ', queryParameters: ${op.dartQueryMap}';
