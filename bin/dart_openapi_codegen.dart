@@ -486,12 +486,11 @@ String generateModel(List<Operation> operations) {
 
 String generateApi(List<Operation> operations) {
   var ops =
-      "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n"
-      '\n';
+      "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
       'enum RequestType {\n  get, post, put, delete\n}\n\nclass Api {\n  Future<Map<String, dynamic>> request(RequestType requestType, String path, Map<String, dynamic> query, dynamic body) async => {};\n';
   for (final op in operations) {
-    ops += '\n\n';
+    ops += '\n';
     ops +=
         '  /** ${((op.description ?? '') + op.parameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${e.key}] ${e.value.description}').join('')).replaceAll('\n', '\n    ')}\n*/\n';
     if (op.deprecated) ops += '  @deprecated\n';
