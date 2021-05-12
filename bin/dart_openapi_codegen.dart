@@ -26,7 +26,7 @@ String stripDoc(String s) =>
 abstract class Schema {
   String get dartType;
   String get definition;
-  String get dartFromJson;
+  String dartFromJson(String input);
   List<DefinitionSchema> get definitionSchemas;
 
   factory Schema.fromJson(Map<String, dynamic> json, String baseName,
@@ -112,7 +112,17 @@ class ObjectSchema implements DefinitionSchema {
   @override
   String get dartType => className(title);
   @override
-  String get dartFromJson => '$dartType.fromJson';
+  String dartFromJson(String input) => '$dartType.fromJson($input)';
+  @override
+  String get dartToJsonMap =>
+      '{\n' +
+      (inheritedAdditionalProperties != null
+          ? '      ...additionalProperties,\n'
+          : '') +
+      properties.entries
+          .map((e) => "      '${e.key}': ${variableName(e.key)},\n")
+          .join('') +
+      '    }';
   @override
   String get definition =>
       'class $dartType ${baseClasses.isNotEmpty ? 'implements ${baseClasses.map((c) => className(c.title)).join(', ')} ' : ''}{\n'
@@ -127,13 +137,13 @@ class ObjectSchema implements DefinitionSchema {
       '  $dartType.fromJson(Map<String, dynamic> json) :\n' +
       allProperties.entries
           .map((e) =>
-              '    ${variableName(e.key)} = ${e.value.schema.dartFromJson}(json[\'${e.key}\'])')
+              '    ${variableName(e.key)} = ${e.value.schema.dartFromJson("json['${e.key}']")}')
           .followedBy([
         if (inheritedAdditionalProperties != null)
-          '    additionalProperties = Map.fromEntries(json.entries.where((e) => ![${allProperties.keys.map((k) => "'$k'").join(', ')}].contains(e.key)).map((e) => MapEntry(e.key, ${inheritedAdditionalProperties!.dartFromJson}(e.value))))'
+          '    additionalProperties = Map.fromEntries(json.entries.where((e) => ![${allProperties.keys.map((k) => "'$k'").join(', ')}].contains(e.key)).map((e) => MapEntry(e.key, ${inheritedAdditionalProperties!.dartFromJson('e.value')})))'
       ]).join(',\n') +
       ';\n'
-          '  Map<String, dynamic> toJson() => {};\n' +
+          '  Map<String, dynamic> toJson() => $dartToJsonMap;\n' +
       allProperties.entries
           .map((e) =>
               '  /** ${e.value.description ?? ''} */\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
@@ -183,7 +193,9 @@ class MapSchema implements Schema {
   @override
   String get dartType => 'Map<String, ${valueSchema?.dartType ?? 'dynamic'}>';
   @override
-  String get dartFromJson => 'castMap<${valueSchema?.dartType ?? 'dynamic'}>';
+  String dartFromJson(String input) => valueSchema != null
+      ? '($input as Map<String, dynamic>).map((k, v) => MapEntry(k, ${valueSchema!.dartFromJson('v')}))'
+      : '$input as Map<String, dynamic>';
   @override
   String get definition => '';
   @override
@@ -202,7 +214,8 @@ class ArraySchema implements Schema {
   @override
   String get dartType => 'List<${items.dartType}>';
   @override
-  String get dartFromJson => 'castArray<${items.dartType}>';
+  String dartFromJson(String input) =>
+      '($input as List).map((v) => ${items.dartFromJson('v')}).toList()';
   @override
   List<DefinitionSchema> get definitionSchemas => items.definitionSchemas;
 
@@ -222,8 +235,8 @@ class EnumSchema implements DefinitionSchema {
   @override
   String get dartType => title;
   @override
-  String get dartFromJson =>
-      '((v) => {${values.map((v) => "'$v': $dartType.${variableName(v)}").join(', ')}}[v]!)';
+  String dartFromJson(String input) =>
+      '{${values.map((v) => "'$v': $dartType.${variableName(v)}").join(', ')}}[$input]!';
   @override
   String get definition =>
       'enum $dartType {\n  ${(values.toList()..sort()).map(variableName).join(', ')}\n}\n';
@@ -250,7 +263,8 @@ class UnknownSchema implements Schema {
       }[type] ??
       'dynamic';
   @override
-  String get dartFromJson => type == 'file' ? 'ignoreFile' : '';
+  String dartFromJson(String input) =>
+      type == 'file' ? 'ignoreFile($input)' : '$input as $dartType';
   @override
   String get definition => '';
   @override
@@ -266,7 +280,7 @@ class VoidSchema implements Schema {
   @override
   String get definition => '';
   @override
-  String get dartFromJson => 'ignore';
+  String dartFromJson(String input) => 'ignore($input)';
   @override
   List<DefinitionSchema> get definitionSchemas => [];
 }
@@ -277,7 +291,8 @@ class OptionalSchema implements Schema {
   @override
   String get definition => inner.definition;
   @override
-  String get dartFromJson => inner.dartFromJson;
+  String dartFromJson(String input) =>
+      '((v) => v != null ? ${inner.dartFromJson('v')} : null)($input)';
   @override
   List<DefinitionSchema> get definitionSchemas => inner.definitionSchemas;
   Schema inner;
@@ -320,6 +335,8 @@ class Operation {
   Schema? response;
   bool deprecated;
   Map<String, Parameter> parameters;
+  Map<String, Parameter> get queryParameters => Map.fromEntries(
+      parameters.entries.where((e) => e.value.type == ParameterType.query));
   Set<DefinitionSchema> get definitionSchemas => {
         ...parameters.values.expand((param) => param.schema.definitionSchemas),
         if (response != null) ...response!.definitionSchemas
@@ -343,11 +360,11 @@ class Operation {
           .join('') +
       '    }';
 
-  String get dartBody {
-    final result = parameters.keys.cast<String?>().singleWhere(
-        (k) => parameters[k]?.type == ParameterType.body,
-        orElse: () => null);
-    return (result != null) ? '${variableName(result)}' : 'null';
+  String? get dartBody {
+    final bodyParams =
+        parameters.entries.where((e) => e.value.type == ParameterType.body);
+    if (bodyParams.isEmpty) return null;
+    return variableName(bodyParams.single.key);
   }
 }
 
@@ -497,18 +514,31 @@ String generateApi(List<Operation> operations) {
   var ops =
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
-      'enum RequestType {\n  get, post, put, delete\n}\n\nclass Api {\n  Future<Map<String, dynamic>> request(RequestType requestType, String path, Map<String, dynamic> query, dynamic body) async => {};\n';
+      "import 'package:http/http.dart';\nimport 'dart:convert';\n\nclass Api {\n  Uri? baseUri;\n  Client httpClient = Client();\n  Api({this.baseUri});\n";
   for (final op in operations) {
     ops += '\n';
     ops +=
-        '  /** ${((op.description ?? '') + op.parameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${e.key}] ${e.value.description}').join('')).replaceAll('\n', '\n    ')}\n*/\n';
+        '  /** ${((op.description ?? '') + op.parameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n    ')}\n  */\n';
     if (op.deprecated) ops += '  @deprecated\n';
     ops +=
-        '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.parameters.entries.map((e) => '${e.value.schema.dartType} ${e.key}').join(', ')}) async {\n    ';
-    ops += 'return ${op.response?.dartFromJson ?? 'ignore'}(';
+        '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.parameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').join(', ')}) async {\n';
+    ops += '    final requestUri = Uri(path: ${op.dartUriString}';
+    if (op.queryParameters.isNotEmpty) {
+      ops += ', queryParameters: ${op.dartQueryMap}';
+    }
+    ops += ');\n';
     ops +=
-        'await request(RequestType.${op.method}, ${op.dartUriString}, ${op.dartQueryMap}, ${op.dartBody}))';
-    ops += ';\n  }';
+        "    final request = Request('${op.method.toUpperCase()}', baseUri!.resolveUri(requestUri));\n";
+    if (op.dartBody != null) {
+      ops += "    request.headers['content-type'] = 'application/json';\n"
+          '    request.bodyBytes = utf8.encode(jsonEncode(${op.dartBody!}));\n';
+    }
+    ops += '    final response = await httpClient.send(request);\n';
+    ops += '    final responseBody = await response.stream.toBytes();\n';
+    ops += '    final responseString = utf8.decode(responseBody);\n';
+    ops += '    final json = jsonDecode(responseString);\n';
+    ops += '    return ${op.response?.dartFromJson('json') ?? 'null'};\n';
+    ops += '  }\n';
   }
   ops += '}\n';
   return ops;
