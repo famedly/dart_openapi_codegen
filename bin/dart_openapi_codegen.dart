@@ -439,7 +439,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
       final operationId =
           mcontent['operationId'] ?? '${path.split('/').last}$method';
       final localParams = mcontent['parameters'] == null
-          ? null
+          ? <String, Parameter>{}
           : Map<String, Parameter>.fromEntries(
               (mcontent['parameters'] as List<dynamic>).map((parameter) =>
                   MapEntry(variableName(parameter['name']),
@@ -464,7 +464,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
         path: path,
         method: method,
         response: responseSchema,
-        parameters: localParams ?? params,
+        parameters: {...params, ...localParams},
         accessToken: mcontent['security']?[0]?['accessToken'] != null,
         deprecated: mcontent['deprecated'] ?? false,
         unpackedBody: true,
@@ -585,7 +585,7 @@ String generateApi(List<Operation> operations) {
   for (final op in operations) {
     ops += '\n';
     ops +=
-        '  /** ${((op.description ?? '') + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n    ')}\n  */\n';
+        '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n  \/\/\/ ')}\n';
     if (op.deprecated) ops += '  @deprecated\n';
     ops +=
         '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').join(', ')}) async {\n';
