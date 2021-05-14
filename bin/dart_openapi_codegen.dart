@@ -422,12 +422,12 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
   final Map<String, dynamic> paths = api['paths'];
   paths.forEach((path, methods) {
     methods.cast<String, Map<String, dynamic>>().forEach((method, mcontent) {
+      final operationId =
+          mcontent['operationId'] ?? '${path.split('/').last}$method';
       final param = Map<String, Parameter>.fromEntries(
           (mcontent['parameters'] as List<dynamic>? ?? []).map((parameter) =>
-              MapEntry(
-                  variableName(parameter['name']),
-                  Parameter.fromJson(
-                      parameter, className(mcontent['operationId'])))));
+              MapEntry(variableName(parameter['name']),
+                  Parameter.fromJson(parameter, className(operationId)))));
 
       final Map<String, dynamic> responses = mcontent['responses'];
       Schema? responseSchema;
@@ -436,14 +436,14 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
         if (schema != null) {
           final ps = Schema.fromJson(
               schema,
-              className(mcontent['operationId']) +
+              className(operationId) +
                   (response == '200' ? 'Response' : className(response)));
           if (response == '200') responseSchema = ps;
         }
       });
 
       operations.add(Operation(
-        id: mcontent['operationId'],
+        id: operationId,
         description: mcontent['description'],
         path: path,
         method: method,
