@@ -122,14 +122,15 @@ class ObjectSchema implements DefinitionSchema {
   String dartFromJson(String input) => '$dartType.fromJson($input)';
   @override
   String dartToJsonEntry(String key, String input) => "'$key': $input";
-  @override
+
   String get dartToJsonMap =>
       '{\n' +
       (inheritedAdditionalProperties != null
           ? '      ...additionalProperties,\n'
           : '') +
       properties.entries
-          .map((e) => '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
+          .map((e) =>
+              '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
   @override
@@ -251,7 +252,8 @@ class EnumSchema implements DefinitionSchema {
   String dartFromJson(String input) =>
       '{${values.map((v) => "'$v': $dartType.${variableName(v)}").join(', ')}}[$input]!';
   @override
-  String dartToJsonEntry(String key, String input) => "'$key': {${values.map((v) => "$dartType.${variableName(v)}: '$v'").join(', ')}}[$input]!";
+  String dartToJsonEntry(String key, String input) =>
+      "'$key': {${values.map((v) => "$dartType.${variableName(v)}: '$v'").join(', ')}}[$input]!";
   @override
   String get definition =>
       'enum $dartType {\n  ${(values.toList()..sort()).map(variableName).join(', ')}\n}\n';
@@ -313,7 +315,8 @@ class OptionalSchema implements Schema {
   String dartFromJson(String input) =>
       '((v) => v != null ? ${inner.dartFromJson('v')} : null)($input)';
   @override
-  String dartToJsonEntry(String key, String input) => 'if ($input != null) ${inner.dartToJsonEntry(key, input)}';
+  String dartToJsonEntry(String key, String input) =>
+      'if ($input != null) ${inner.dartToJsonEntry(key, input)}';
   @override
   List<DefinitionSchema> get definitionSchemas => inner.definitionSchemas;
   Schema inner;
@@ -396,7 +399,8 @@ class Operation {
       '{\n' +
       parameters.entries
           .where((e) => e.value.type == ParameterType.query)
-          .map((e) => '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
+          .map((e) =>
+              '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
 
@@ -510,7 +514,7 @@ void numberConflicts(List<Operation> operations) {
     final defs = duplicates.map((x) => x.definition).toSet();
     if (defs.length > 1) {
       final defList = defs.toList();
-      var prevDefs = Map<Schema, String>.fromEntries(
+      final prevDefs = Map<Schema, String>.fromEntries(
           duplicates.map((d) => MapEntry(d, d.definition)));
       duplicates
           .forEach((d) => d.title += '\$${defList.indexOf(prevDefs[d]!) + 1}');
@@ -597,9 +601,9 @@ String generateApi(List<Operation> operations) {
 
 void main(List<String> arguments) async {
   final outputDir = Directory(arguments[0]);
-  Map<String, dynamic> api =
+  final Map<String, dynamic> api =
       jsonDecode(await File(arguments[1]).readAsString());
-  List<dynamic> rules = arguments.length > 2
+  final List<dynamic> rules = arguments.length > 2
       ? loadYaml(await File(arguments[2]).readAsString())
       : [];
 

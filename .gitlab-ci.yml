@@ -1,0 +1,12 @@
+stages:
+  - coverage
+
+code_analyze:
+  tags:
+    - docker
+  stage: coverage
+  image: cirrusci/flutter
+  dependencies: []
+  script:
+    - flutter format bin/ --set-exit-if-changed
+    - flutter analyze
