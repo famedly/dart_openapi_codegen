@@ -154,16 +154,13 @@ class ObjectSchema implements DefinitionSchema {
       ]).join(',\n') +
       ';\n'
           '  Map<String, dynamic> toJson() => $dartToJsonMap;\n' +
-      allProperties.entries
+      dartAllProperties.entries
           .map((e) =>
               '  /** ${e.value.description ?? ''} */\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
           .join('') +
-      (inheritedAdditionalProperties != null
-          ? '  Map<String, ${inheritedAdditionalProperties!.dartType}> additionalProperties;\n'
-          : '') +
       '}\n';
   @override
-  List<DefinitionSchema> get definitionSchemas => allProperties.values
+  List<DefinitionSchema> get definitionSchemas => properties.values
       .expand((x) => x.schema.definitionSchemas)
       .followedBy(additionalProperties?.definitionSchemas ?? [])
       .followedBy(baseClasses.expand((c) => c.definitionSchemas))
