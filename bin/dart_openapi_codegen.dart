@@ -162,7 +162,7 @@ class ObjectSchema implements DefinitionSchema {
           : '') +
       '}\n';
   @override
-  List<DefinitionSchema> get definitionSchemas => allProperties.values
+  List<DefinitionSchema> get definitionSchemas => properties.values
       .expand((x) => x.schema.definitionSchemas)
       .followedBy(additionalProperties?.definitionSchemas ?? [])
       .followedBy(baseClasses.expand((c) => c.definitionSchemas))
