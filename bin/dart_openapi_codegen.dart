@@ -421,13 +421,29 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
   final operations = <Operation>[];
   final Map<String, dynamic> paths = api['paths'];
   paths.forEach((path, methods) {
-    methods.cast<String, Map<String, dynamic>>().forEach((method, mcontent) {
+    final params = Map<String, Parameter>.fromEntries(
+        (methods['parameters'] as List<dynamic>? ?? []).map((parameter) =>
+            MapEntry(variableName(parameter['name']),
+                Parameter.fromJson(parameter, className(parameter['name'])))));
+    methods.cast<String, dynamic>().forEach((method, mcontent) {
+      if (!{
+        'get',
+        'post',
+        'put',
+        'delete',
+        'patch',
+        'options',
+        'head',
+        'trace',
+      }.contains(method.toLowerCase())) return;
       final operationId =
           mcontent['operationId'] ?? '${path.split('/').last}$method';
-      final param = Map<String, Parameter>.fromEntries(
-          (mcontent['parameters'] as List<dynamic>? ?? []).map((parameter) =>
-              MapEntry(variableName(parameter['name']),
-                  Parameter.fromJson(parameter, className(operationId)))));
+      final localParams = mcontent['parameters'] == null
+          ? null
+          : Map<String, Parameter>.fromEntries(
+              (mcontent['parameters'] as List<dynamic>).map((parameter) =>
+                  MapEntry(variableName(parameter['name']),
+                      Parameter.fromJson(parameter, className(operationId)))));
 
       final Map<String, dynamic> responses = mcontent['responses'];
       Schema? responseSchema;
@@ -448,7 +464,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
         path: path,
         method: method,
         response: responseSchema,
-        parameters: param,
+        parameters: localParams ?? params,
         accessToken: mcontent['security']?[0]?['accessToken'] != null,
         deprecated: mcontent['deprecated'] ?? false,
         unpackedBody: true,
