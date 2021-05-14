@@ -272,6 +272,7 @@ class UnknownSchema implements Schema {
       {
         'string': 'String',
         'integer': 'int',
+        'number': 'double',
         'boolean': 'bool',
         'file': 'FileResponse'
       }[type] ??
