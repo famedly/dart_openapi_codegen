@@ -397,6 +397,20 @@ class Operation {
   String path;
   String method;
   Schema? response;
+  Schema? get dartResponse {
+    final _response = response;
+    return _response is ObjectSchema && _response.allProperties.length == 1
+        ? _response.allProperties.values.single.schema
+        : _response;
+  }
+
+  String? get dartResponseExtract {
+    final _response = response;
+    return _response is ObjectSchema && _response.allProperties.length == 1
+        ? "['${_response.allProperties.keys.single}']"
+        : '';
+  }
+
   bool accessToken;
   bool deprecated;
   bool unpackedBody;
@@ -423,7 +437,7 @@ class Operation {
       e.value.schema is! OptionalSchema;
   Set<Schema> get schemas => {
         ...dartParameters.values.map((param) => param.schema),
-        if (response != null) response!,
+        if (dartResponse != null) dartResponse!,
       };
   Set<DefinitionSchema> get definitionSchemas =>
       schemas.expand((s) => s.definitionSchemas).toSet();
@@ -604,7 +618,7 @@ String generateApi(List<Operation> operations) {
         '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n  \/\/\/ ')}\n';
     if (op.deprecated) ops += '  @deprecated\n';
     ops +=
-        '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartPositionalParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').followedBy([
+        '  Future<${op.dartResponse?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartPositionalParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').followedBy([
           if (op.dartNamedParameters.isNotEmpty)
             '{' +
                 op.dartNamedParameters.entries
@@ -632,7 +646,8 @@ String generateApi(List<Operation> operations) {
     ops += '    final responseBody = await response.stream.toBytes();\n';
     ops += '    final responseString = utf8.decode(responseBody);\n';
     ops += '    final json = jsonDecode(responseString);\n';
-    ops += '    return ${op.response?.dartFromJson('json') ?? 'null'};\n';
+    ops +=
+        '    return ${op.dartResponse?.dartFromJson('json${op.dartResponseExtract}') ?? 'null'};\n';
     ops += '  }\n';
   }
   ops += '}\n';
