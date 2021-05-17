@@ -8,6 +8,45 @@ include:
   - logoutAll
   - setAccountData
   - setAccountDataPerRoom
+voidResponse:
+  - logout
+  - logoutAll
+  - changePassword
+  - add3PID
+  - bind3PID
+  - setRoomAlias
+  - deleteRoomAlias
+  - inviteToRoom
+  - leaveRoom
+  - forgetRoom
+  - kick
+  - ban
+  - unban
+  - setRoomVisibilityOnDirectory
+  - setDisplayName
+  - setAvatarUrl
+  - setTyping
+  - postReceipt
+  - setReadMarker
+  - setPresence
+  - sendToDevice
+  - updateDevice
+  - deleteDevice
+  - deleteDevices
+  - uploadDeviceSigningKeys
+  - postPusher
+  - deletePushRule
+  - setPushRule
+  - setPushRuleEnabled
+  - setPushRuleActions
+  - setRoomTag
+  - deleteRoomTag
+  - setAccountData
+  - setAccountDataPerRoom
+  - reportContent
+  - upgradeRoom
+  - updateRoomKeysBackup
+  - deleteRoomKeysBackup
 rename:
   - from: Event
     baseOf: SyncRoomEvent

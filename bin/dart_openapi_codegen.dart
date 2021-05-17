@@ -702,10 +702,14 @@ void main(List<String> arguments) async {
       : {};
   final List<dynamic> renameRules = rules['rename'] ?? [];
   final List<dynamic>? includeList = rules['include'];
+  final List<dynamic> voidResponse = rules['voidResponse'] ?? [];
 
   final operations = operationsFromApi(api);
   if (includeList != null) {
     operations.retainWhere((op) => includeList.contains(variableName(op.id)));
+  }
+  for (final voidOp in operations.where((op) => voidResponse.contains(op.id))) {
+    voidOp.response = VoidSchema();
   }
   mergeDuplicates(operations);
   applyRenameRules(operations, renameRules);
