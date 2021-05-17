@@ -162,7 +162,7 @@ class ObjectSchema extends DefinitionSchema {
           '  Map<String, dynamic> toJson() => $dartToJsonMap;\n' +
       dartAllProperties.entries
           .map((e) =>
-              '  /** ${e.value.description ?? ''} */\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
+              '${e.value.description?.replaceAll(RegExp('^|\n'), '\n  /// ') ?? ''}\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
           .join('') +
       '}\n';
   @override
@@ -545,14 +545,14 @@ String generateModel(List<Operation> operations) {
   return "import 'internal.dart';\n\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
       definitionSchemasMap.values
           .map((v) =>
-              '/** ' +
               v
                   .where((v) => v.description != null)
                   .map((v) => '${v.description}\n')
                   .toSet()
-                  .toList()
+                  .expand((x) => x.split('\n'))
+                  .where((x) => x.isNotEmpty)
+                  .map((x) => '/// $x\n')
                   .join('') +
-              '*/\n' +
               "@_NameSource('${v.first.nameSource}')\n" +
               v.first.definition)
           .join('\n');
