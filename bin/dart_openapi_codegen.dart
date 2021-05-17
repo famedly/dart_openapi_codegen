@@ -20,14 +20,16 @@ String variableName(String s) => className(s).uncapitalized;
 String fixup(String s) =>
     ['default', 'is'].contains(s.toLowerCase()) ? s + '\$' : s;
 
-String stripDoc(String s) =>
-    s.replaceAll(RegExp('/\\*(\\*(?!/)|[^*])*\\*/'), '');
+String stripDoc(String s) => s
+    .replaceAll(RegExp('/\\*(\\*(?!/)|[^*])*\\*/[ \n]*'), '')
+    .replaceAll(RegExp('@_[a-zA-Z0-9]*\\([^)]*\\)[ \n]*'), '');
 
 abstract class Schema {
   String get dartType;
   String dartFromJson(String input);
   String dartToJsonEntry(String key, String input);
   List<DefinitionSchema> get definitionSchemas => [];
+  void replaceSchema(Schema from, Schema to) {}
 
   Schema();
 
@@ -70,7 +72,13 @@ abstract class DefinitionSchema extends Schema {
   String title;
   String nameSource;
   String? description;
-  String get definition;
+  String get definition =>
+      (description
+              ?.split('\n')
+              .map((line) => '/// $line'.trim() + '\n')
+              .join('') ??
+          '') +
+      "@_NameSource('$nameSource')\n";
 
   @override
   String get dartType => className(title);
@@ -104,7 +112,7 @@ class ObjectSchema extends DefinitionSchema {
       Map.fromEntries(baseClasses.expand((c) => c.allProperties.entries));
   Map<String, ObjectParam> get allProperties {
     if (properties.keys.any((k) => inheritedProperties.keys.contains(k))) {
-      print('${className(title)} bad');
+      print('invalid base class: ${className(title)}');
       baseClasses.clear();
     }
     return inheritedProperties..addAll(properties);
@@ -141,6 +149,7 @@ class ObjectSchema extends DefinitionSchema {
       '    }';
   @override
   String get definition =>
+      super.definition +
       'class $dartType ${baseClasses.isNotEmpty ? 'implements ${baseClasses.map((c) => className(c.title)).join(', ')} ' : ''}{\n'
           '  $dartType({\n' +
       allProperties.entries
@@ -171,6 +180,26 @@ class ObjectSchema extends DefinitionSchema {
       .followedBy(additionalProperties?.definitionSchemas ?? [])
       .followedBy(baseClasses.expand((c) => c.definitionSchemas))
       .followedBy([this]).toList();
+
+  @override
+  void replaceSchema(Schema from, Schema to) {
+    if (to is ObjectSchema) {
+      baseClasses = baseClasses.map((b) => b == from ? to : b).toList();
+    }
+    baseClasses.forEach((b) => b.replaceSchema(from, to));
+    properties.values.forEach((v) {
+      if (v.schema == from) {
+        v.schema = to;
+      } else {
+        v.schema.replaceSchema(from, to);
+      }
+    });
+    if (additionalProperties == from) {
+      additionalProperties = to;
+    } else {
+      additionalProperties?.replaceSchema(from, to);
+    }
+  }
 
   ObjectSchema._fromJson(Map<String, dynamic> json, String baseName)
       : properties = SplayTreeMap.from((json['properties'] as Map? ?? {}).map(
@@ -213,6 +242,15 @@ class MapSchema implements Schema {
   List<DefinitionSchema> get definitionSchemas =>
       valueSchema?.definitionSchemas ?? [];
 
+  @override
+  void replaceSchema(Schema from, Schema to) {
+    if (valueSchema == from) {
+      valueSchema = to;
+    } else {
+      valueSchema?.replaceSchema(from, to);
+    }
+  }
+
   MapSchema.freeForm();
   MapSchema.fromJson(Map<String, dynamic> json, String baseName)
       : valueSchema = json['additionalProperties'] != null
@@ -232,6 +270,15 @@ class ArraySchema implements Schema {
   @override
   List<DefinitionSchema> get definitionSchemas => items.definitionSchemas;
 
+  @override
+  void replaceSchema(Schema from, Schema to) {
+    if (items == from) {
+      items = to;
+    } else {
+      items.replaceSchema(from, to);
+    }
+  }
+
   ArraySchema.fromJson(Map<String, dynamic> json, String baseName)
       : items = Schema.fromJson(json['items'], baseName);
 }
@@ -246,6 +293,7 @@ class EnumSchema extends DefinitionSchema {
       "'$key': {${values.map((v) => "$dartType.${variableName(v)}: '$v'").join(', ')}}[$input]!";
   @override
   String get definition =>
+      super.definition +
       'enum $dartType {\n  ${(values.toList()..sort()).map(variableName).join(', ')}\n}\n';
   @override
   List<DefinitionSchema> get definitionSchemas => [this];
@@ -304,6 +352,14 @@ class OptionalSchema implements Schema {
   OptionalSchema._(this.inner);
   factory OptionalSchema(Schema schema) =>
       schema is OptionalSchema ? schema : OptionalSchema._(schema);
+  @override
+  void replaceSchema(Schema from, Schema to) {
+    if (inner == from) {
+      inner = to;
+    } else {
+      inner.replaceSchema(from, to);
+    }
+  }
 }
 
 enum ParameterType { path, query, body, header }
@@ -359,11 +415,26 @@ class Operation {
           return [e];
         }))
       : parameters;
-  Set<DefinitionSchema> get definitionSchemas => {
-        ...dartParameters.values
-            .expand((param) => param.schema.definitionSchemas),
-        if (response != null) ...response!.definitionSchemas
+  Set<Schema> get schemas => {
+        ...dartParameters.values.map((param) => param.schema),
+        if (response != null) response!,
       };
+  Set<DefinitionSchema> get definitionSchemas =>
+      schemas.expand((s) => s.definitionSchemas).toSet();
+  void replaceSchema(Schema from, Schema to) {
+    for (final parameter in parameters.values) {
+      if (parameter.schema == from) {
+        parameter.schema = to;
+      } else {
+        parameter.schema.replaceSchema(from, to);
+      }
+    }
+    if (response == from) {
+      response = to;
+    } else {
+      response?.replaceSchema(from, to);
+    }
+  }
 
   String get dartUriString =>
       "'" +
@@ -456,7 +527,8 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
 }
 
 void applyRules(List<Operation> operations, List<dynamic> rules) {
-  final definitionSchemas = operations.expand((op) => op.definitionSchemas);
+  final definitionSchemas =
+      operations.expand((op) => op.definitionSchemas).toSet();
   final definitionSchemasMap = <String, List<DefinitionSchema>>{};
   for (final schema in definitionSchemas) {
     (definitionSchemasMap[schema.dartType] ??= []).add(schema);
@@ -469,9 +541,7 @@ void applyRules(List<Operation> operations, List<dynamic> rules) {
         usedBy = rule['usedBy'],
         base = rule['base'];
     final bool? isEnum = rule['enum'];
-    final candidates = (definitionSchemasMap[from] ?? []);
-    final matchedSources = <String>{};
-    for (final candidate in candidates) {
+    for (final candidate in (definitionSchemasMap[from] ?? [])) {
       if ((property == null ||
               (candidate is ObjectSchema &&
                   candidate.properties[property] != null)) &&
@@ -488,11 +558,6 @@ void applyRules(List<Operation> operations, List<dynamic> rules) {
               (candidate is ObjectSchema &&
                   candidate.baseClasses.any((b) => b.title == base))) &&
           (isEnum == null || isEnum == candidate is EnumSchema)) {
-        matchedSources.add(candidate.definition);
-      }
-    }
-    for (final candidate in candidates) {
-      if (matchedSources.contains(candidate.definition)) {
         candidate.title = to;
         candidate.nameSource = 'rule override ${candidate.nameSource}';
       }
@@ -501,60 +566,24 @@ void applyRules(List<Operation> operations, List<dynamic> rules) {
 }
 
 void numberConflicts(List<Operation> operations) {
-  final definitionSchemas = operations.expand((op) => op.definitionSchemas);
-  final definitionSchemasMap = <String, List<DefinitionSchema>>{};
-  for (final schema in definitionSchemas) {
-    (definitionSchemasMap[schema.dartType] ??= []).add(schema);
+  final definitionSchemasMap = <String, Set<DefinitionSchema>>{};
+  for (final schema in operations.expand((op) => op.definitionSchemas)) {
+    (definitionSchemasMap[schema.dartType] ??= {}).add(schema);
   }
 
   for (final duplicates in definitionSchemasMap.values) {
-    final defs = duplicates.map((x) => x.definition).toSet();
-    if (defs.length > 1) {
-      final defList = defs.toList();
-      final prevDefs = Map<Schema, String>.fromEntries(
-          duplicates.map((d) => MapEntry(d, d.definition)));
-      duplicates
-          .forEach((d) => d.title += '\$${defList.indexOf(prevDefs[d]!) + 1}');
+    if (duplicates.length > 1) {
+      duplicates.toList().asMap().forEach((k, v) => v.title += '\$${k + 1}');
     }
   }
-}
-
-void resolveDocConflicts(List<Operation> operations) {
-  final definitionSchemas = operations.expand((op) => op.definitionSchemas);
-  final stripDocMap = <String, List<DefinitionSchema>>{};
-  for (final schema in definitionSchemas) {
-    (stripDocMap[stripDoc(schema.definition)] ??= []).add(schema);
-  }
-  stripDocMap.values.forEach((duplicates) {
-    if (duplicates.any((x) => x.definition != duplicates.first.definition)) {
-      duplicates.forEach((schema) => (schema as ObjectSchema)
-          .properties
-          .values
-          .forEach((p) => p.description = null));
-    }
-  });
 }
 
 String generateModel(List<Operation> operations) {
-  final definitionSchemas = operations.expand((op) => op.definitionSchemas);
-  final definitionSchemasMap = <String, List<DefinitionSchema>>{};
-  for (final schema in definitionSchemas) {
-    (definitionSchemasMap[schema.dartType] ??= []).add(schema);
-  }
-
   return "import 'internal.dart';\n\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
-      definitionSchemasMap.values
-          .map((v) =>
-              v
-                  .where((v) => v.description != null)
-                  .map((v) => '${v.description}\n')
-                  .toSet()
-                  .expand((x) => x.split('\n'))
-                  .where((x) => x.isNotEmpty)
-                  .map((x) => '/// $x\n')
-                  .join('') +
-              "@_NameSource('${v.first.nameSource}')\n" +
-              v.first.definition)
+      operations
+          .expand((op) => op.definitionSchemas)
+          .toSet()
+          .map((v) => v.definition)
           .join('\n');
 }
 
@@ -596,6 +625,37 @@ String generateApi(List<Operation> operations) {
   return ops;
 }
 
+void mergeSchemas(DefinitionSchema a, DefinitionSchema b) {
+  final adesc = a.description, bdesc = b.description;
+  if (adesc == null) {
+    a.description = bdesc;
+  } else if (bdesc == null) {
+    b.description = adesc;
+  } else if (!adesc.contains(bdesc)) {
+    b.description = a.description = '$adesc\n\n$bdesc';
+  }
+  if (!a.nameSource.contains(b.nameSource)) {
+    b.nameSource = a.nameSource = '(${a.nameSource}, ${b.nameSource})';
+  }
+  if (a.definition != b.definition) {
+    print('duplicates with different documentation: ${a.title}');
+  }
+}
+
+void mergeDuplicates(List<Operation> operations) {
+  final map = <String, DefinitionSchema>{};
+  for (final operation in operations) {
+    for (final schema in operation.definitionSchemas) {
+      final def = stripDoc(schema.definition);
+      final v = map.putIfAbsent(def, () => schema);
+      if (v != schema) {
+        mergeSchemas(v, schema);
+        operation.replaceSchema(schema, v);
+      }
+    }
+  }
+}
+
 void main(List<String> arguments) async {
   final outputDir = Directory(arguments[0]);
   final Map<String, dynamic> api =
@@ -605,8 +665,9 @@ void main(List<String> arguments) async {
       : [];
 
   final operations = operationsFromApi(api);
-  resolveDocConflicts(operations);
+  mergeDuplicates(operations);
   applyRules(operations, rules);
+  mergeDuplicates(operations);
   numberConflicts(operations);
   final model = generateModel(operations);
   final dartApi = generateApi(operations);
