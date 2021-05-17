@@ -562,7 +562,7 @@ String generateApi(List<Operation> operations) {
   var ops =
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
-      "import 'package:http/http.dart';\nimport 'dart:convert';\n\nclass Api {\n  Uri? baseUri;\n  String? bearerToken;\n  Client httpClient = Client();\n  Api({this.baseUri, this.bearerToken});\n";
+      "import 'package:http/http.dart';\nimport 'dart:convert';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n";
   for (final op in operations) {
     ops += '\n';
     ops +=
