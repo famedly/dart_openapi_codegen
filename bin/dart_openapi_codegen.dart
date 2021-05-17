@@ -419,13 +419,29 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
   final operations = <Operation>[];
   final Map<String, dynamic> paths = api['paths'];
   paths.forEach((path, methods) {
-    methods.cast<String, Map<String, dynamic>>().forEach((method, mcontent) {
-      final param = Map<String, Parameter>.fromEntries(
-          (mcontent['parameters'] as List<dynamic>? ?? []).map((parameter) =>
-              MapEntry(
-                  variableName(parameter['name']),
-                  Parameter.fromJson(
-                      parameter, className(mcontent['operationId'])))));
+    final params = Map<String, Parameter>.fromEntries(
+        (methods['parameters'] as List<dynamic>? ?? []).map((parameter) =>
+            MapEntry(variableName(parameter['name']),
+                Parameter.fromJson(parameter, className(parameter['name'])))));
+    methods.cast<String, dynamic>().forEach((method, mcontent) {
+      if (!{
+        'get',
+        'post',
+        'put',
+        'delete',
+        'patch',
+        'options',
+        'head',
+        'trace',
+      }.contains(method.toLowerCase())) return;
+      final operationId =
+          mcontent['operationId'] ?? '${path.split('/').last}$method';
+      final localParams = mcontent['parameters'] == null
+          ? <String, Parameter>{}
+          : Map<String, Parameter>.fromEntries(
+              (mcontent['parameters'] as List<dynamic>).map((parameter) =>
+                  MapEntry(variableName(parameter['name']),
+                      Parameter.fromJson(parameter, className(operationId)))));
 
       final Map<String, dynamic> responses = mcontent['responses'];
       Schema? responseSchema;
@@ -434,19 +450,19 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
         if (schema != null) {
           final ps = Schema.fromJson(
               schema,
-              className(mcontent['operationId']) +
+              className(operationId) +
                   (response == '200' ? 'Response' : className(response)));
           if (response == '200') responseSchema = ps;
         }
       });
 
       operations.add(Operation(
-        id: mcontent['operationId'],
+        id: operationId,
         description: mcontent['description'],
         path: path,
         method: method,
         response: responseSchema,
-        parameters: param,
+        parameters: {...params, ...localParams},
         accessToken: mcontent['security']?[0]?['accessToken'] != null,
         deprecated: mcontent['deprecated'] ?? false,
         unpackedBody: true,
@@ -567,7 +583,7 @@ String generateApi(List<Operation> operations) {
   for (final op in operations) {
     ops += '\n';
     ops +=
-        '  /** ${((op.description ?? '') + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n    ')}\n  */\n';
+        '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n  \/\/\/ ')}\n';
     if (op.deprecated) ops += '  @deprecated\n';
     ops +=
         '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').join(', ')}) async {\n';
