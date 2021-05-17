@@ -1,57 +1,69 @@
 ---
-- from: Event
-  baseOf: SyncRoomEvent
-  to: BasicEvent
-- from: Event
-  usedBy: Notification
-  to: NotificationEvent
-- from: RoomInfo
-  property: invite
-  to: InviteRoomInfo
-- from: Keys
-  usedBy: RoomEventsCriteria
-  to: KeyKind
-- from: Key
-  usedBy: Group
-  to: GroupKey
-- from: Presence
-  enum: false
-  to: PresenceData
-- from: AccountData
-  base: EventFilter
-  to: AccountDataFilter
-- from: Ephemeral
-  base: EventFilter
-  to: EphemeralFilter
-- from: State
-  base: EventFilter
-  to: StateFilter
-- from: Timeline
-  base: EventFilter
-  to: TimelineFilter
-- from: TheCurrentMembershipStateOfAUserInTheRoom
-  to: MembershipState
+include:
+  - getAccountData
+  - getAccountDataPerRoom
+  - getWellknown
+  - getVersions
+  - logout
+  - logoutAll
+  - setAccountData
+  - setAccountDataPerRoom
+rename:
+  - from: Event
+    baseOf: SyncRoomEvent
+    to: BasicEvent
+  - from: Event
+    usedBy: Notification
+    to: NotificationEvent
+  - from: RoomInfo
+    property: invite
+    to: InviteRoomInfo
+  - from: Keys
+    usedBy: RoomEventsCriteria
+    to: KeyKind
+  - from: Key
+    usedBy: Group
+    to: GroupKey
+  - from: Presence
+    enum: false
+    to: PresenceData
+  - from: AccountData
+    base: EventFilter
+    to: AccountDataFilter
+  - from: Ephemeral
+    base: EventFilter
+    to: EphemeralFilter
+  - from: State
+    base: EventFilter
+    to: StateFilter
+  - from: Timeline
+    base: EventFilter
+    to: TimelineFilter
+  - from: TheCurrentMembershipStateOfAUserInTheRoom
+    to: MembershipState
+  - from: GetConfigResponse
+    to: ServerConfig
 
-# enums
-- from: SetPresence
-  enum: true
-  to: Presence
-- from: Kind
-  usedBy: getPushRule
-  enum: true
-  to: PushRuleKind
-- from: Kind
-  usedBy: register
-  enum: true
-  to: AccountKind
-- from: NotMembership
-  to: Membership
-- from: Available
-  usedBy: RoomVersionsCapability
-  to: RoomVersionAvailable
-- from: Algorithm
-  usedBy: getRoomKeysVersionCurrent
-  to: BackupAlgorithm
-- from: Type
-  usedBy: Login
-  to: LoginType
+  # enums
+  - from: SetPresence
+    enum: true
+    to: Presence
+  - from: Kind
+    usedBy: getPushRule
+    enum: true
+    to: PushRuleKind
+  - from: Kind
+    usedBy: register
+    enum: true
+    to: AccountKind
+  - from: NotMembership
+    to: Membership
+  - from: Available
+    usedBy: RoomVersionsCapability
+    to: RoomVersionAvailable
+  - from: Algorithm
+    usedBy: getRoomKeysVersionCurrent
+    to: BackupAlgorithm
+  - from: Type
+    usedBy: Login
+    to: LoginType

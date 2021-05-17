@@ -554,7 +554,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
   return operations;
 }
 
-void applyRules(List<Operation> operations, List<dynamic> rules) {
+void applyRenameRules(List<Operation> operations, List<dynamic> renameRules) {
   final definitionSchemas =
       operations.expand((op) => op.definitionSchemas).toSet();
   final definitionSchemasMap = <String, List<DefinitionSchema>>{};
@@ -562,7 +562,7 @@ void applyRules(List<Operation> operations, List<dynamic> rules) {
     (definitionSchemasMap[schema.dartType] ??= []).add(schema);
   }
 
-  for (final rule in rules) {
+  for (final rule in renameRules) {
     final String from = rule['from'], to = rule['to'];
     final String? property = rule['property'],
         baseOf = rule['baseOf'],
@@ -697,13 +697,18 @@ void main(List<String> arguments) async {
   final outputDir = Directory(arguments[0]);
   final Map<String, dynamic> api =
       jsonDecode(await File(arguments[1]).readAsString());
-  final List<dynamic> rules = arguments.length > 2
+  final Map rules = arguments.length > 2
       ? loadYaml(await File(arguments[2]).readAsString())
-      : [];
+      : {};
+  final List<dynamic> renameRules = rules['rename'] ?? [];
+  final List<dynamic>? includeList = rules['include'];
 
   final operations = operationsFromApi(api);
+  if (includeList != null) {
+    operations.retainWhere((op) => includeList.contains(variableName(op.id)));
+  }
   mergeDuplicates(operations);
-  applyRules(operations, rules);
+  applyRenameRules(operations, renameRules);
   mergeDuplicates(operations);
   numberConflicts(operations);
   final model = generateModel(operations);
