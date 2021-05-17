@@ -201,6 +201,8 @@ class ObjectSchema extends DefinitionSchema {
     }
   }
 
+  bool get inlinable => nameSource == 'generated';
+
   ObjectSchema._fromJson(Map<String, dynamic> json, String baseName)
       : properties = SplayTreeMap.from((json['properties'] as Map? ?? {}).map(
             (k, v) => MapEntry(
@@ -399,14 +401,18 @@ class Operation {
   Schema? response;
   Schema? get dartResponse {
     final _response = response;
-    return _response is ObjectSchema && _response.allProperties.length == 1
+    return _response is ObjectSchema &&
+            _response.allProperties.length == 1 &&
+            _response.inlinable
         ? _response.allProperties.values.single.schema
         : _response;
   }
 
   String? get dartResponseExtract {
     final _response = response;
-    return _response is ObjectSchema && _response.allProperties.length == 1
+    return _response is ObjectSchema &&
+            _response.allProperties.length == 1 &&
+            _response.inlinable
         ? "['${_response.allProperties.keys.single}']"
         : '';
   }
@@ -420,7 +426,9 @@ class Operation {
   Map<String, Parameter> get dartParameters => unpackedBody
       ? Map.fromEntries(parameters.entries.expand((e) {
           final s = e.value.schema;
-          if (e.value.type == ParameterType.body && s is ObjectSchema) {
+          if (e.value.type == ParameterType.body &&
+              s is ObjectSchema &&
+              s.inlinable) {
             return s.dartAllProperties.entries.map((e) => MapEntry(
                 e.key,
                 Parameter(
@@ -482,7 +490,7 @@ class Operation {
     if (bodyParams.isEmpty) return null;
     final bodyParam = bodyParams.single;
     final bodySchema = bodyParam.value.schema;
-    if (unpackedBody && bodySchema is ObjectSchema) {
+    if (unpackedBody && bodySchema is ObjectSchema && bodySchema.inlinable) {
       return bodySchema.dartToJsonMap;
     }
     return variableName(bodyParam.key);
