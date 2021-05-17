@@ -415,6 +415,12 @@ class Operation {
           return [e];
         }))
       : parameters;
+  Map<String, Parameter> get dartPositionalParameters =>
+      Map.fromEntries(dartParameters.entries.where(isPositionalParameter));
+  Map<String, Parameter> get dartNamedParameters => Map.fromEntries(
+      dartParameters.entries.where((p) => !isPositionalParameter(p)));
+  bool isPositionalParameter(MapEntry<String, Parameter> e) =>
+      e.value.schema is! OptionalSchema;
   Set<Schema> get schemas => {
         ...dartParameters.values.map((param) => param.schema),
         if (response != null) response!,
@@ -598,7 +604,15 @@ String generateApi(List<Operation> operations) {
         '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n  \/\/\/ ')}\n';
     if (op.deprecated) ops += '  @deprecated\n';
     ops +=
-        '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').join(', ')}) async {\n';
+        '  Future<${op.response?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartPositionalParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').followedBy([
+          if (op.dartNamedParameters.isNotEmpty)
+            '{' +
+                op.dartNamedParameters.entries
+                    .map((e) =>
+                        '${e.value.schema.dartType} ${variableName(e.key)}')
+                    .join(', ') +
+                '}'
+        ]).join(', ')}) async {\n';
     ops += '    final requestUri = Uri(path: ${op.dartUriString}';
     if (op.queryParameters.isNotEmpty) {
       ops += ', queryParameters: ${op.dartQueryMap}';
