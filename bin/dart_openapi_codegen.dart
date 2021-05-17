@@ -25,10 +25,11 @@ String stripDoc(String s) =>
 
 abstract class Schema {
   String get dartType;
-  String get definition;
   String dartFromJson(String input);
   String dartToJsonEntry(String key, String input);
-  List<DefinitionSchema> get definitionSchemas;
+  List<DefinitionSchema> get definitionSchemas => [];
+
+  Schema();
 
   factory Schema.fromJson(Map<String, dynamic> json, String baseName,
       {bool required = true}) {
@@ -66,11 +67,24 @@ abstract class Schema {
 }
 
 abstract class DefinitionSchema extends Schema {
-  abstract String title;
-  abstract String nameSource;
-  String? get description;
+  String title;
+  String nameSource;
+  String? description;
+  String get definition;
 
-  factory DefinitionSchema._() => throw UnimplementedError();
+  @override
+  String get dartType => className(title);
+
+  DefinitionSchema({
+    required this.title,
+    required this.nameSource,
+    this.description,
+  });
+
+  DefinitionSchema.fromJson(Map<String, dynamic> json, String baseName)
+      : title = json['title'] ?? baseName,
+        nameSource = json['title'] == null ? 'generated' : 'spec',
+        description = json['description'];
 }
 
 class ObjectParam {
@@ -84,7 +98,7 @@ class ObjectParam {
         description = json['description'];
 }
 
-class ObjectSchema implements DefinitionSchema {
+class ObjectSchema extends DefinitionSchema {
   Map<String, ObjectParam> properties;
   Map<String, ObjectParam> get inheritedProperties =>
       Map.fromEntries(baseClasses.expand((c) => c.allProperties.entries));
@@ -110,14 +124,6 @@ class ObjectSchema implements DefinitionSchema {
   }
 
   List<ObjectSchema> baseClasses;
-  @override
-  String title;
-  @override
-  String nameSource;
-  @override
-  String? description;
-  @override
-  String get dartType => className(title);
   @override
   String dartFromJson(String input) => '$dartType.fromJson($input)';
   @override
@@ -179,12 +185,10 @@ class ObjectSchema implements DefinitionSchema {
                     : {},
                 className(baseName))
             : null,
-        title = json['title'] ?? baseName,
-        nameSource = json['title'] == null ? 'generated' : 'spec',
-        description = json['description'],
         baseClasses = (json['allOf'] as List? ?? [])
             .map((j) => Schema.fromJson(j, baseName) as ObjectSchema)
-            .toList();
+            .toList(),
+        super.fromJson(json, baseName);
 
   factory ObjectSchema.fromJson(Map<String, dynamic> json, String baseName) {
     final schema = ObjectSchema._fromJson(json, baseName);
@@ -205,8 +209,6 @@ class MapSchema implements Schema {
       : '$input as Map<String, dynamic>';
   @override
   String dartToJsonEntry(String key, String input) => "'$key': $input";
-  @override
-  String get definition => '';
   @override
   List<DefinitionSchema> get definitionSchemas =>
       valueSchema?.definitionSchemas ?? [];
@@ -230,21 +232,12 @@ class ArraySchema implements Schema {
   @override
   List<DefinitionSchema> get definitionSchemas => items.definitionSchemas;
 
-  @override
-  String get definition => items.definition;
-
   ArraySchema.fromJson(Map<String, dynamic> json, String baseName)
       : items = Schema.fromJson(json['items'], baseName);
 }
 
-class EnumSchema implements DefinitionSchema {
-  @override
-  String title;
-  @override
-  String nameSource = 'generated';
+class EnumSchema extends DefinitionSchema {
   List<String> values;
-  @override
-  String get dartType => title;
   @override
   String dartFromJson(String input) =>
       '{${values.map((v) => "'$v': $dartType.${variableName(v)}").join(', ')}}[$input]!';
@@ -255,17 +248,17 @@ class EnumSchema implements DefinitionSchema {
   String get definition =>
       'enum $dartType {\n  ${(values.toList()..sort()).map(variableName).join(', ')}\n}\n';
   @override
-  String? description;
-  @override
   List<DefinitionSchema> get definitionSchemas => [this];
 
   EnumSchema.fromJson(Map<String, dynamic> json, String baseName)
-      : title = baseName,
-        values = json['enum'].cast<String>(),
-        description = json['description'];
+      : values = json['enum'].cast<String>(),
+        super(
+            title: baseName,
+            nameSource: 'generated',
+            description: json['description']);
 }
 
-class UnknownSchema implements Schema {
+class UnknownSchema extends Schema {
   String? type;
   @override
   String get dartType =>
@@ -282,33 +275,23 @@ class UnknownSchema implements Schema {
       type == 'file' ? 'ignoreFile($input)' : '$input as $dartType';
   @override
   String dartToJsonEntry(String key, String input) => "'$key': $input";
-  @override
-  String get definition => '';
-  @override
-  List<DefinitionSchema> get definitionSchemas => [];
 
   UnknownSchema();
   UnknownSchema.fromJson(Map<String, dynamic> json) : type = json['type'];
 }
 
-class VoidSchema implements Schema {
+class VoidSchema extends Schema {
   @override
   String get dartType => 'void';
-  @override
-  String get definition => '';
   @override
   String dartFromJson(String input) => 'ignore($input)';
   @override
   String dartToJsonEntry(String key, String input) => "'$key': {}";
-  @override
-  List<DefinitionSchema> get definitionSchemas => [];
 }
 
 class OptionalSchema implements Schema {
   @override
   String get dartType => '${inner.dartType}?';
-  @override
-  String get definition => inner.definition;
   @override
   String dartFromJson(String input) =>
       '((v) => v != null ? ${inner.dartFromJson('v')} : null)($input)';
