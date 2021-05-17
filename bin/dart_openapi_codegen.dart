@@ -25,7 +25,6 @@ String stripDoc(String s) =>
 
 abstract class Schema {
   String get dartType;
-  String get definition;
   String dartFromJson(String input);
   String dartToJsonEntry(String key, String input);
   List<DefinitionSchema> get definitionSchemas;
@@ -69,6 +68,7 @@ abstract class DefinitionSchema extends Schema {
   abstract String title;
   abstract String nameSource;
   String? get description;
+  String get definition;
 
   factory DefinitionSchema._() => throw UnimplementedError();
 }
@@ -206,8 +206,6 @@ class MapSchema implements Schema {
   @override
   String dartToJsonEntry(String key, String input) => "'$key': $input";
   @override
-  String get definition => '';
-  @override
   List<DefinitionSchema> get definitionSchemas =>
       valueSchema?.definitionSchemas ?? [];
 
@@ -229,9 +227,6 @@ class ArraySchema implements Schema {
   String dartToJsonEntry(String key, String input) => "'$key': $input";
   @override
   List<DefinitionSchema> get definitionSchemas => items.definitionSchemas;
-
-  @override
-  String get definition => items.definition;
 
   ArraySchema.fromJson(Map<String, dynamic> json, String baseName)
       : items = Schema.fromJson(json['items'], baseName);
@@ -283,8 +278,6 @@ class UnknownSchema implements Schema {
   @override
   String dartToJsonEntry(String key, String input) => "'$key': $input";
   @override
-  String get definition => '';
-  @override
   List<DefinitionSchema> get definitionSchemas => [];
 
   UnknownSchema();
@@ -294,8 +287,6 @@ class UnknownSchema implements Schema {
 class VoidSchema implements Schema {
   @override
   String get dartType => 'void';
-  @override
-  String get definition => '';
   @override
   String dartFromJson(String input) => 'ignore($input)';
   @override
@@ -307,8 +298,6 @@ class VoidSchema implements Schema {
 class OptionalSchema implements Schema {
   @override
   String get dartType => '${inner.dartType}?';
-  @override
-  String get definition => inner.definition;
   @override
   String dartFromJson(String input) =>
       '((v) => v != null ? ${inner.dartFromJson('v')} : null)($input)';
