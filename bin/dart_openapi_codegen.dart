@@ -393,6 +393,7 @@ class Operation {
       required this.accessToken,
       required this.deprecated,
       required this.unpackedBody,
+      required this.unpackedResponse,
       this.parameters = const {}});
   String id;
   String? description;
@@ -401,7 +402,8 @@ class Operation {
   Schema? response;
   Schema? get dartResponse {
     final _response = response;
-    return _response is ObjectSchema &&
+    return unpackedResponse &&
+            _response is ObjectSchema &&
             _response.allProperties.length == 1 &&
             _response.inlinable
         ? _response.allProperties.values.single.schema
@@ -410,7 +412,8 @@ class Operation {
 
   String? get dartResponseExtract {
     final _response = response;
-    return _response is ObjectSchema &&
+    return unpackedResponse &&
+            _response is ObjectSchema &&
             _response.allProperties.length == 1 &&
             _response.inlinable
         ? "['${_response.allProperties.keys.single}']"
@@ -420,6 +423,7 @@ class Operation {
   bool accessToken;
   bool deprecated;
   bool unpackedBody;
+  bool unpackedResponse;
   Map<String, Parameter> parameters;
   Map<String, Parameter> get queryParameters => Map.fromEntries(
       parameters.entries.where((e) => e.value.type == ParameterType.query));
@@ -442,7 +446,7 @@ class Operation {
   Map<String, Parameter> get dartNamedParameters => Map.fromEntries(
       dartParameters.entries.where((p) => !isPositionalParameter(p)));
   bool isPositionalParameter(MapEntry<String, Parameter> e) =>
-      e.value.schema is! OptionalSchema;
+      e.value.schema is! OptionalSchema || path.split('/').last == e.key;
   Set<Schema> get schemas => {
         ...dartParameters.values.map((param) => param.schema),
         if (dartResponse != null) dartResponse!,
@@ -526,17 +530,24 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
                       Parameter.fromJson(parameter, className(operationId)))));
 
       final Map<String, dynamic> responses = mcontent['responses'];
-      Schema? responseSchema;
-      responses.forEach((response, rcontent) {
+      final responseSchemas = responses.map((response, rcontent) {
         final Map<String, dynamic>? schema = rcontent['schema'];
         if (schema != null) {
           final ps = Schema.fromJson(
               schema,
               className(operationId) +
                   (response == '200' ? 'Response' : className(response)));
-          if (response == '200') responseSchema = ps;
+          return MapEntry(response, ps);
         }
+        return MapEntry(response, null);
       });
+
+      final responseSchema = responseSchemas['200'];
+      var unpackedResponse = false;
+      if (responseSchema is ObjectSchema) {
+        unpackedResponse = responseSchema.allProperties.keys
+            .every(path.split('/').last.contains);
+      }
 
       operations.add(Operation(
         id: operationId,
@@ -548,6 +559,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
         accessToken: mcontent['security']?[0]?['accessToken'] != null,
         deprecated: mcontent['deprecated'] ?? false,
         unpackedBody: true,
+        unpackedResponse: unpackedResponse,
       ));
     });
   });
