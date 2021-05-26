@@ -1,98 +1,24 @@
 ---
+imports:
+  - ../model/auth/authentication_data.dart
+  - ../model/auth/authentication_types.dart
+  - ../model/auth/authentication_identifier.dart
+  - ../model/matrix_keys.dart
+  - ../model/sync_update.dart
+  - ../model/matrix_event.dart
 exclude:
-  - getAccount3PIDs
-  - post3PIDs
-  - add3PID
-  - bind3PID
-  - delete3pidFromAccount
-  - unbind3pidFromAccount
-  - deactivateAccount
-  - changePassword
-  - getTokenOwner
-  - getWhoIs
-  - createRoom
-  - deleteDevices
-  - getDevices
-  - deleteDevice
-  - getDevice
-  - updateDevice
-  - updateAppserviceRoomDirectoryVisibility
-  - getRoomIdByAlias
-  - setRoomAlias
-  - getEvents
-  - getOneEvent
-  - initialSync
-  - joinRoom
-  - getKeysChanges
-  - claimKeys
-  - queryKeys
-  - uploadKeys
-  - knockRoom
-  - getLoginFlows
-  - login
-  - getNotifications
-  - getPresence
-  - setPresence
-  - getUserProfile
-  - getAvatarUrl
-  - setAvatarUrl
-  - getPublicRooms
-  - queryPublicRooms
-  - getPushers
-  - postPusher
-  - getPushRules
-  - deletePushRule
-  - getPushRule
-  - setPushRule
-  - getPushRuleActions
-  - setPushRuleActions
-  - isPushRuleEnabled
-  - setPushRuleEnabled
-  - register
-  - checkUsernameAvailability
-  - postRoomKeysKey
-  - postRoomKeysKeyRoomId
-  - postRoomKeysKeyRoomIdSessionId
-  - getRoomKeysVersionCurrent
-  - postRoomKeysVersion
-  - getRoomKeysVersion
-  - putRoomKeysVersion
-  - getLocalAliases
-  - getEventContext
-  - getOneRoomEvent
-  - roomInitialSync
-  - inviteBy3PID
-  - inviteUser
-  - joinRoomById
-  - getJoinedMembersByRoom
-  - leaveRoom
-  - getMembersByRoom
-  - getRoomEvents
-  - setReadMarker
-  - postReceipt
-  - redactEvent
-  - reportContent
-  - sendMessage
-  - getRoomState
-  - getRoomStateWithKey
-  - setRoomStateWithKey
-  - setTyping
-  - upgradeRoom
-  - search
-  - sendToDevice
-  - sync
-  - defineFilter
-  - getFilter
-  - requestOpenIdToken
-  - getRoomTags
-  - setRoomTag
-  - searchUserDirectory
-  - getTurnServer
-  - getContent
-  - getContentOverrideName
-  - getUrlPreview
-  - getContentThumbnail
-  - uploadContent
+  - getEvents # missing room_id parameter
+  - initialSync # deprecated
+  - uploadKeys # missing fallback keys
+  - postPusher # need to add append
+  - roomInitialSync # deprecated
+  - SyncUpdate
+  - AuthenticationData
+  - AuthenticationIdentifier
+  - MatrixCrossSigningKey
+  - MatrixDeviceKeys
+  - DeviceInformation
+  - MatrixEvent
 voidResponse:
   - logout
   - logoutAll
@@ -101,7 +27,8 @@ voidResponse:
   - bind3PID
   - setRoomAlias
   - deleteRoomAlias
-  - inviteToRoom
+  - inviteUser
+  - inviteBy3PID
   - leaveRoom
   - forgetRoom
   - kick
@@ -129,53 +56,125 @@ voidResponse:
   - setAccountData
   - setAccountDataPerRoom
   - reportContent
-  - upgradeRoom
   - updateRoomKeysBackup
   - deleteRoomKeysBackup
+replace:
+  - from: Event
+    usedBy: getOneEvent
+    to: MatrixEvent
+  - from: Event
+    usedBy: getOneRoomEvent
+    to: MatrixEvent
+  - from: RoomEvent
+    usedBy: GetEventsResponse
+    to: MatrixEvent
+  - from: Event
+    usedBy: Notification
+    to: MatrixEvent
+  - from: RoomEvent
+    usedBy: GetEventContextResponse
+    to: MatrixEvent
+  - from: StateEvent
+    usedBy: GetEventContextResponse
+    to: MatrixEvent
+  - from: RoomEvent
+    usedBy: getRoomEvents
+    to: MatrixEvent
+  - from: StateEvent
+    usedBy: getRoomEvents
+    to: MatrixEvent
+  - from: TheCurrentMembershipStateOfAUserInTheRoom
+    usedBy: getMembersByRoom
+    to: MatrixEvent
+  - from: StateEvent
+    usedBy: getRoomState
+    to: MatrixEvent
+  - from: SyncStateEvent
+    usedBy: Results
+    to: MatrixEvent
+  - from: StateEvent
+    usedBy: Results
+    to: MatrixEvent
+  - from: Event
+    usedBy: Results
+    to: MatrixEvent
 rename:
   - from: Event
     baseOf: SyncRoomEvent
     to: BasicEvent
-  - from: Event
-    usedBy: Notification
-    to: NotificationEvent
   - from: RoomInfo
     property: invite
     to: InviteRoomInfo
-  - from: Keys
-    usedBy: RoomEventsCriteria
-    to: KeyKind
   - from: Key
     usedBy: Group
     to: GroupKey
   - from: Presence
     enum: false
-    to: PresenceData
+    to: PresenceContent
   - from: AccountData
     base: EventFilter
-    to: AccountDataFilter
+    to: StateFilter
   - from: Ephemeral
     base: EventFilter
-    to: EphemeralFilter
+    to: StateFilter
   - from: State
     base: EventFilter
     to: StateFilter
   - from: Timeline
     base: EventFilter
-    to: TimelineFilter
-  - from: TheCurrentMembershipStateOfAUserInTheRoom
-    to: MembershipState
+    to: StateFilter
   - from: GetConfigResponse
     to: ServerConfig
   - from: GetTurnServerResponse
     to: TurnServerCredentials
   - from: RequestOpenIdTokenResponse
     to: OpenIdCredentials
+  - from: Global
+    to: PushRuleSet
+  - from: GetWhoIsResponse
+    to: WhoIsInfo
+  - from: GetTokenOwnerResponse
+    to: TokenOwnerInfo
+  - from: GetUserProfileResponse
+    to: ProfileInformation
+  - from: User
+    to: Profile
+  - from: Filter
+    property: genericSearchTerm
+    to: PublicRoomQueryFilter
+  - from: UserIdentifier
+    to: AuthenticationIdentifier
+  - from: CrossSigningKey
+    to: MatrixCrossSigningKey
+  - from: DeviceKeys
+    to: MatrixDeviceKeys
+  - from: DeviceInformation
+    to: MatrixDeviceKeys
+  - from: PostRoomKeysKeyRequest
+    to: RoomKeys
+  - from: SyncResponse
+    to: SyncUpdate
+  - from: GetEventsResponse
+    to: EventsSyncUpdate
+  - from: GetEventContextResponse
+    to: EventContext
+  - from: Results
+    usedBy: search
+    to: SearchResults
+  - from: EventContext
+    usedBy: search
+    to: SearchResultsEventContext
+  - from: Filter
+    usedBy: search
+    to: SearchFilter
 
   # enums
   - from: SetPresence
     enum: true
-    to: Presence
+    to: PresenceType
+  - from: Presence
+    enum: true
+    to: PresenceType
   - from: Kind
     usedBy: getPushRule
     enum: true
@@ -193,5 +192,23 @@ rename:
     usedBy: getRoomKeysVersionCurrent
     to: BackupAlgorithm
   - from: Type
-    usedBy: Login
+    usedBy: login
     to: LoginType
+  - from: Medium
+    enum: true
+    to: ThirdPartyIdentifierMedium
+  - from: Preset
+    enum: true
+    usedBy: createRoom
+    to: CreateRoomPreset
+  - from: Dir
+    enum: true
+    to: Direction
+  - from: Keys
+    enum: true
+    usedBy: RoomEventsCriteria
+    to: KeyKind
+  - from: OrderBy
+    usedBy: search
+    enum: true
+    to: SearchOrder
