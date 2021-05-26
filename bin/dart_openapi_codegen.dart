@@ -664,6 +664,8 @@ String generateApi(List<Operation> operations) {
     }
     ops += '    final response = await httpClient.send(request);\n';
     ops += '    final responseBody = await response.stream.toBytes();\n';
+    ops +=
+        "    if (response.statusCode != 200) throw Exception('http error response');\n";
     ops += '    final responseString = utf8.decode(responseBody);\n';
     ops += '    final json = jsonDecode(responseString);\n';
     ops +=
