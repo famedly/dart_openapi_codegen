@@ -1,6 +1,7 @@
 ---
 include:
   - getWellknown
+  - getCapabilities
   - deleteRoomAlias
   - getJoinedRooms
   - logout
