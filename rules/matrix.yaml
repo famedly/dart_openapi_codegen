@@ -1,13 +1,24 @@
 ---
 include:
-  - getAccountData
-  - getAccountDataPerRoom
   - getWellknown
-  - getVersions
+  - deleteRoomAlias
+  - getJoinedRooms
   - logout
   - logoutAll
+  - getDisplayName
+  - setDisplayName
+  - deleteRoomKeysVersion
+  - ban
+  - forgetRoom
+  - kick
+  - unban
+  - getAccountData
   - setAccountData
+  - getAccountDataPerRoom
   - setAccountDataPerRoom
+  - deleteRoomTag
+  - getVersions
+  - getConfig
 voidResponse:
   - logout
   - logoutAll
