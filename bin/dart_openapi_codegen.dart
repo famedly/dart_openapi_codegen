@@ -492,7 +492,7 @@ class Operation {
           .split('/')
           .where((c) => c.isNotEmpty)
           .map((c) => (c.startsWith('{') && c.endsWith('}'))
-              ? '\${Uri.encodeComponent(${c.substring(1, c.length - 1)}.toString())}'
+              ? '\${Uri.encodeComponent(${dartParameters[c.substring(1, c.length - 1)]!.schema.dartToJson(c.substring(1, c.length - 1))})}'
               : c)
           .join('/') +
       "'";
