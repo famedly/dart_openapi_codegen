@@ -525,7 +525,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
   paths.forEach((path, methods) {
     final params = Map<String, Parameter>.fromEntries(
         (methods['parameters'] as List<dynamic>? ?? []).map((parameter) =>
-            MapEntry(variableName(parameter['name']),
+            MapEntry(parameter['name'],
                 Parameter.fromJson(parameter, className(parameter['name'])))));
     methods.cast<String, dynamic>().forEach((method, mcontent) {
       if (!{
@@ -544,7 +544,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
           ? <String, Parameter>{}
           : Map<String, Parameter>.fromEntries(
               (mcontent['parameters'] as List<dynamic>).map((parameter) =>
-                  MapEntry(variableName(parameter['name']),
+                  MapEntry(parameter['name'],
                       Parameter.fromJson(parameter, className(operationId)))));
 
       final Map<String, dynamic> responses = mcontent['responses'];
