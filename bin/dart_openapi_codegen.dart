@@ -121,6 +121,19 @@ class ObjectParam {
         description = json['description'];
 }
 
+class ExcludedSchema extends Schema {
+  Schema inner;
+  ExcludedSchema._(this.inner);
+  factory ExcludedSchema(Schema schema) =>
+      schema is ExcludedSchema ? schema : ExcludedSchema._(schema);
+  @override
+  String get dartType => inner.dartType;
+  @override
+  String dartFromJson(String input) => inner.dartFromJson(input);
+  @override
+  String dartToJson(String input) => inner.dartToJson(input);
+}
+
 class ObjectSchema extends DefinitionSchema {
   Map<String, ObjectParam> properties;
   Map<String, ObjectParam> get inheritedProperties =>
@@ -757,12 +770,13 @@ void main(List<String> arguments) async {
       ? loadYaml(await File(arguments[2]).readAsString())
       : {};
   final List<dynamic> renameRules = rules['rename'] ?? [];
-  final List<dynamic>? includeList = rules['include'];
+  final List<dynamic>? includeApi = rules['includeApi'];
+  final List<dynamic> exclude = rules['exclude'] ?? [];
   final List<dynamic> voidResponse = rules['voidResponse'] ?? [];
 
   final operations = operationsFromApi(api);
-  if (includeList != null) {
-    operations.retainWhere((op) => includeList.contains(variableName(op.id)));
+  if (includeApi != null) {
+    operations.retainWhere((op) => includeApi.contains(variableName(op.id)));
   }
   for (final voidOp in operations.where((op) => voidResponse.contains(op.id))) {
     voidOp.response = VoidSchema();
@@ -770,6 +784,14 @@ void main(List<String> arguments) async {
   mergeDuplicates(operations);
   applyRenameRules(operations, renameRules);
   mergeDuplicates(operations);
+  operations.removeWhere((op) => exclude.contains(variableName(op.id)));
+  for (final schema
+      in operations.expand((op) => op.definitionSchemas).toSet()) {
+    if (exclude.contains(className(schema.title))) {
+      final replaceSchema = ExcludedSchema(schema);
+      operations.forEach((op) => op.replaceSchema(schema, replaceSchema));
+    }
+  }
   numberConflicts(operations);
   final model = generateModel(operations);
   final dartApi = generateApi(operations);
