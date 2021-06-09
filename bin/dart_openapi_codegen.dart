@@ -773,6 +773,9 @@ void main(List<String> arguments) async {
   final List<dynamic>? includeApi = rules['includeApi'];
   final List<dynamic> exclude = rules['exclude'] ?? [];
   final List<dynamic> voidResponse = rules['voidResponse'] ?? [];
+  final List<dynamic> imports = rules['imports'] ?? [];
+  final importStr = imports.map((path) => "import '$path';\n").join('') +
+      (imports.isEmpty ? '' : '\n');
 
   final operations = operationsFromApi(api);
   if (includeApi != null) {
@@ -793,8 +796,8 @@ void main(List<String> arguments) async {
     }
   }
   numberConflicts(operations);
-  final model = generateModel(operations);
-  final dartApi = generateApi(operations);
+  final model = importStr + generateModel(operations);
+  final dartApi = importStr + generateApi(operations);
   await File.fromUri(outputDir.uri.resolve('model.dart')).writeAsString(model);
   await File.fromUri(outputDir.uri.resolve('api.dart')).writeAsString(dartApi);
 }
