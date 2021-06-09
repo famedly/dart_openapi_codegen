@@ -682,7 +682,7 @@ String generateApi(List<Operation> operations) {
             '{' +
                 op.dartNamedParameters.entries
                     .map((e) =>
-                        '${e.value.schema.dartType} ${variableName(e.key)}${e.value.schema.dartDefault != null ? ' = ${e.value.schema.dartDefault}' : ''}')
+                        '${e.value.schema.dartType} ${variableName(e.key)}${e.value.schema.dartDefault != null ? ' = const ${e.value.schema.dartDefault}' : ''}')
                     .join(', ') +
                 '}'
         ]).join(', ')}) async {\n';
