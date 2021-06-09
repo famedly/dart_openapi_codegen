@@ -179,7 +179,8 @@ class ObjectSchema extends DefinitionSchema {
       'class $dartType ${baseClasses.isNotEmpty ? 'implements ${baseClasses.map((c) => className(c.title)).join(', ')} ' : ''}{\n'
           '  $dartType({\n' +
       allProperties.entries
-          .map((e) => '    required this.${variableName(e.key)},\n')
+          .map((e) =>
+              '    ${e.value.schema is OptionalSchema ? '' : 'required '}this.${variableName(e.key)},\n')
           .join() +
       (inheritedAdditionalProperties != null
           ? '    this.additionalProperties = const {},\n'
