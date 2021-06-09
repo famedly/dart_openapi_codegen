@@ -26,12 +26,21 @@ String stripDoc(String s) => s
 
 abstract class Schema {
   String get dartType;
+  String? get dartDefault => null;
   String dartFromJson(String input);
   String dartToJson(String input) => input;
   String dartToJsonEntry(String key, String input) =>
       "'$key': ${dartToJson(input)}";
   String dartToJsonPromotableEntry(String key, String input) =>
       dartToJsonEntry(key, input);
+  String dartToQueryPromotableEntry(String key, String input) {
+    final schema = nonOptional;
+    return dartToJsonPromotableEntry(key, input) +
+        (schema is UnknownSchema && schema.type != 'string'
+            ? '.toString()'
+            : '');
+  }
+
   List<DefinitionSchema> get definitionSchemas => [];
   void replaceSchema(Schema from, Schema to) {}
 
@@ -51,7 +60,7 @@ abstract class Schema {
       if (json['properties'] == null &&
           json['additionalProperties'] == null &&
           json['allOf'] == null) {
-        return MapSchema.freeForm();
+        return MapSchema();
       }
       final obj = ObjectSchema.fromJson(json, baseName);
       if (obj.allProperties.isEmpty) {
@@ -70,6 +79,8 @@ abstract class Schema {
       return UnknownSchema.fromJson(json);
     }
   }
+
+  Schema get nonOptional => this;
 }
 
 abstract class DefinitionSchema extends Schema {
@@ -125,7 +136,8 @@ class ObjectSchema extends DefinitionSchema {
   Map<String, ObjectParam> get dartAllProperties => {
         ...allProperties,
         if (inheritedAdditionalProperties != null)
-          'additionalProperties': ObjectParam(inheritedAdditionalProperties!),
+          'additionalProperties': ObjectParam(
+              MapSchema.defaultEmpty(inheritedAdditionalProperties!)),
       };
 
   Schema? additionalProperties;
@@ -245,9 +257,12 @@ class ObjectSchema extends DefinitionSchema {
 
 class MapSchema extends Schema {
   Schema? valueSchema;
+  bool defaultEmpty;
 
   @override
   String get dartType => 'Map<String, ${valueSchema?.dartType ?? 'dynamic'}>';
+  @override
+  String? get dartDefault => defaultEmpty ? '{}' : null;
   @override
   String dartFromJson(String input) => valueSchema != null
       ? '($input as Map<String, dynamic>).map((k, v) => MapEntry(k, ${valueSchema!.dartFromJson('v')}))'
@@ -269,11 +284,13 @@ class MapSchema extends Schema {
     }
   }
 
-  MapSchema.freeForm();
+  MapSchema([this.valueSchema]) : defaultEmpty = false;
+  MapSchema.defaultEmpty([this.valueSchema]) : defaultEmpty = true;
   MapSchema.fromJson(Map<String, dynamic> json, String baseName)
       : valueSchema = json['additionalProperties'] != null
             ? Schema.fromJson(json['additionalProperties'], baseName)
-            : null;
+            : null,
+        defaultEmpty = false;
 }
 
 class ArraySchema extends Schema {
@@ -380,6 +397,9 @@ class OptionalSchema extends Schema {
       inner.replaceSchema(from, to);
     }
   }
+
+  @override
+  Schema get nonOptional => inner;
 }
 
 enum ParameterType { path, query, body, header }
@@ -464,7 +484,8 @@ class Operation {
   Map<String, Parameter> get dartNamedParameters => Map.fromEntries(
       dartParameters.entries.where((p) => !isPositionalParameter(p)));
   bool isPositionalParameter(MapEntry<String, Parameter> e) =>
-      e.value.schema is! OptionalSchema || path.split('/').last == e.key;
+      e.value.schema.dartDefault == null && e.value.schema is! OptionalSchema ||
+      path.split('/').last == e.key;
   Set<Schema> get schemas => {
         ...dartParameters.values.map((param) => param.schema),
         if (dartResponse != null) dartResponse!,
@@ -502,7 +523,7 @@ class Operation {
       parameters.entries
           .where((e) => e.value.type == ParameterType.query)
           .map((e) =>
-              '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
+              '      ${e.value.schema.dartToQueryPromotableEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
 
@@ -661,7 +682,7 @@ String generateApi(List<Operation> operations) {
             '{' +
                 op.dartNamedParameters.entries
                     .map((e) =>
-                        '${e.value.schema.dartType} ${variableName(e.key)}')
+                        '${e.value.schema.dartType} ${variableName(e.key)}${e.value.schema.dartDefault != null ? ' = ${e.value.schema.dartDefault}' : ''}')
                     .join(', ') +
                 '}'
         ]).join(', ')}) async {\n';
