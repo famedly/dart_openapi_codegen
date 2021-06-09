@@ -158,7 +158,7 @@ class ObjectSchema extends DefinitionSchema {
       (inheritedAdditionalProperties != null
           ? '      ...additionalProperties,\n'
           : '') +
-      properties.entries
+      allProperties.entries
           .map((e) =>
               '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
           .join('') +
