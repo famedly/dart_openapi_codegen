@@ -32,6 +32,14 @@ abstract class Schema {
       "'$key': ${dartToJson(input)}";
   String dartToJsonPromotableEntry(String key, String input) =>
       dartToJsonEntry(key, input);
+  String dartToQueryPromotableEntry(String key, String input) {
+    final schema = nonOptional;
+    return dartToJsonPromotableEntry(key, input) +
+        (schema is UnknownSchema && schema.type != 'string'
+            ? '.toString()'
+            : '');
+  }
+
   List<DefinitionSchema> get definitionSchemas => [];
   void replaceSchema(Schema from, Schema to) {}
 
@@ -70,6 +78,8 @@ abstract class Schema {
       return UnknownSchema.fromJson(json);
     }
   }
+
+  Schema get nonOptional => this;
 }
 
 abstract class DefinitionSchema extends Schema {
@@ -380,6 +390,9 @@ class OptionalSchema extends Schema {
       inner.replaceSchema(from, to);
     }
   }
+
+  @override
+  Schema get nonOptional => inner;
 }
 
 enum ParameterType { path, query, body, header }
@@ -502,7 +515,7 @@ class Operation {
       parameters.entries
           .where((e) => e.value.type == ParameterType.query)
           .map((e) =>
-              '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
+              '      ${e.value.schema.dartToQueryPromotableEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
 
