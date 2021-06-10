@@ -377,6 +377,8 @@ class SingletonSchema extends Schema {
 
   static final map = {
     'string': SingletonSchema('String'),
+    'string/uri': SingletonSchema('Uri',
+        fromJson: (x) => 'Uri.parse($x)', toJson: (x) => '$x.toString()'),
     'integer': SingletonSchema('int'),
     'number':
         SingletonSchema('double', fromJson: (x) => '($x as num).toDouble()'),
