@@ -378,7 +378,8 @@ class SingletonSchema extends Schema {
   static final map = {
     'string': SingletonSchema('String'),
     'integer': SingletonSchema('int'),
-    'number': SingletonSchema('double'),
+    'number':
+        SingletonSchema('double', fromJson: (x) => '($x as num).toDouble()'),
     'boolean': SingletonSchema('bool'),
     'file': SingletonSchema('FileResponse', fromJson: (x) => 'ignoreFile($x)'),
   };
