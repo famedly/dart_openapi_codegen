@@ -36,7 +36,7 @@ abstract class Schema {
   String dartToQueryPromotableEntry(String key, String input) {
     final schema = nonOptional;
     return dartToJsonPromotableEntry(key, input) +
-        (schema is UnknownSchema && schema.type != 'string'
+        (schema is SingletonSchema && schema.dartType != 'String'
             ? '.toString()'
             : '');
   }
@@ -54,7 +54,7 @@ abstract class Schema {
       if (type.length == 2 && type[0] is String && type[1] == 'null') {
         return Schema.fromJson({...json, 'type': type[0]}, baseName);
       } else {
-        return UnknownSchema();
+        return Schema.dynamicSchema;
       }
     } else if (type == 'object' || json['allOf'] != null) {
       if (json['properties'] == null &&
@@ -67,7 +67,7 @@ abstract class Schema {
         if (obj.inheritedAdditionalProperties != null) {
           return MapSchema.fromJson(json, baseName);
         } else {
-          return VoidSchema();
+          return Schema.voidSchema;
         }
       }
       return obj;
@@ -76,11 +76,15 @@ abstract class Schema {
     } else if (json['enum'] != null) {
       return EnumSchema.fromJson(json, baseName);
     } else {
-      return UnknownSchema.fromJson(json);
+      return SingletonSchema.fromJson(json);
     }
   }
 
   Schema get nonOptional => this;
+
+  static final dynamicSchema = SingletonSchema('dynamic');
+  static final voidSchema = SingletonSchema('void',
+      fromJson: (x) => 'ignore($x)', toJson: (_) => '{}');
 }
 
 abstract class DefinitionSchema extends Schema {
@@ -356,33 +360,35 @@ class EnumSchema extends DefinitionSchema {
             description: json['description']);
 }
 
-class UnknownSchema extends Schema {
-  String? type;
+class SingletonSchema extends Schema {
+  static String _id(String input) => input;
+  SingletonSchema(this.dartType, {this.fromJson, this.toJson = _id});
+
   @override
-  String get dartType =>
-      {
-        'string': 'String',
-        'integer': 'int',
-        'number': 'double',
-        'boolean': 'bool',
-        'file': 'FileResponse'
-      }[type] ??
-      'dynamic';
+  final String dartType;
   @override
   String dartFromJson(String input) =>
-      type == 'file' ? 'ignoreFile($input)' : '$input as $dartType';
+      fromJson?.call(input) ?? '$input as $dartType';
+  @override
+  String dartToJson(String input) => toJson(input);
 
-  UnknownSchema();
-  UnknownSchema.fromJson(Map<String, dynamic> json) : type = json['type'];
-}
+  final String Function(String input)? fromJson;
+  final String Function(String input) toJson;
 
-class VoidSchema extends Schema {
-  @override
-  String get dartType => 'void';
-  @override
-  String dartFromJson(String input) => 'ignore($input)';
-  @override
-  String dartToJson(String input) => '{}';
+  static final map = {
+    'string': SingletonSchema('String'),
+    'integer': SingletonSchema('int'),
+    'number': SingletonSchema('double'),
+    'boolean': SingletonSchema('bool'),
+    'file': SingletonSchema('FileResponse', fromJson: (x) => 'ignoreFile($x)'),
+  };
+
+  factory SingletonSchema.fromJson(Map<String, dynamic> json) {
+    final String? type = json['type'];
+    final String? format = json['format'];
+    if (type == null) return Schema.dynamicSchema;
+    return map['$type/$format'] ?? map[type] ?? Schema.dynamicSchema;
+  }
 }
 
 class OptionalSchema extends Schema {
@@ -782,7 +788,7 @@ void main(List<String> arguments) async {
     operations.retainWhere((op) => includeApi.contains(variableName(op.id)));
   }
   for (final voidOp in operations.where((op) => voidResponse.contains(op.id))) {
-    voidOp.response = VoidSchema();
+    voidOp.response = Schema.voidSchema;
   }
   mergeDuplicates(operations);
   applyRenameRules(operations, renameRules);
