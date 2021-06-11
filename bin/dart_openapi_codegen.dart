@@ -370,6 +370,10 @@ class EnumSchema extends DefinitionSchema {
 class SingletonSchema extends Schema {
   static String _id(String input) => input;
   static String _toString(String input) => '$input.toString()';
+  static String _throw(String input) {
+    throw Exception('invalid conversion');
+  }
+
   SingletonSchema(this.dartType,
       {this.fromJson, this.toJson = _id, this.toQuery = _toString});
 
@@ -391,6 +395,8 @@ class SingletonSchema extends Schema {
     'string': SingletonSchema('String', toQuery: _id),
     'string/uri': SingletonSchema('Uri',
         fromJson: (x) => 'Uri.parse($x)', toJson: (x) => '$x.toString()'),
+    'string/byte': SingletonSchema('Uint8List',
+        fromJson: _throw, toJson: _throw, toQuery: _throw),
     'integer': SingletonSchema('int'),
     'number':
         SingletonSchema('double', fromJson: (x) => '($x as num).toDouble()'),
@@ -580,16 +586,21 @@ class Operation {
           .join('') +
       '    }';
 
-  String? get dartBody {
+  String get dartSetBody {
     final bodyParams =
         parameters.entries.where((e) => e.value.type == ParameterType.body);
-    if (bodyParams.isEmpty) return null;
+    if (bodyParams.isEmpty) return '';
     final bodyParam = bodyParams.single;
     final bodySchema = bodyParam.value.schema;
-    if (unpackedBody && bodySchema is ObjectSchema && bodySchema.inlinable) {
-      return bodySchema.dartToJsonMap;
+    if (bodySchema == SingletonSchema.map['string/byte']) {
+      return '    request.bodyBytes = ${variableName(bodyParam.key)};\n';
     }
-    return variableName(bodyParam.key);
+    final jsonBody =
+        (unpackedBody && bodySchema is ObjectSchema && bodySchema.inlinable)
+            ? bodySchema.dartToJsonMap
+            : variableName(bodyParam.key);
+    return "    request.headers['content-type'] = 'application/json';\n"
+        '    request.bodyBytes = utf8.encode(jsonEncode($jsonBody));\n';
   }
 }
 
@@ -724,7 +735,7 @@ String generateApi(List<Operation> operations) {
   var ops =
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
-      "import 'package:http/http.dart';\nimport 'dart:convert';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n";
+      "import 'package:http/http.dart';\nimport 'dart:convert';\nimport 'dart:typed_data';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n";
   for (final op in operations) {
     ops += '\n';
     ops +=
@@ -755,10 +766,7 @@ String generateApi(List<Operation> operations) {
       ops +=
           "    ${e.value.schema.dartCondition(variableName(e.key))}request.headers['${e.key.toLowerCase()}'] = ${e.value.schema.dartToQuery(variableName(e.key))};\n";
     }
-    if (op.dartBody != null) {
-      ops += "    request.headers['content-type'] = 'application/json';\n"
-          '    request.bodyBytes = utf8.encode(jsonEncode(${op.dartBody!}));\n';
-    }
+    ops += op.dartSetBody;
     ops += '    final response = await httpClient.send(request);\n';
     ops += '    final responseBody = await response.stream.toBytes();\n';
     ops +=
