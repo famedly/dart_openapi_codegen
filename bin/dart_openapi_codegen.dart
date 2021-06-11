@@ -31,14 +31,13 @@ abstract class Schema {
   String dartToJson(String input) => input;
   String dartToJsonEntry(String key, String input) =>
       "'$key': ${dartToJson(input)}";
-  bool get dartNeedFinal => false;
-  String dartToQueryEntry(String key, String input) {
-    final schema = nonOptional;
-    return dartToJsonEntry(key, input) +
-        (schema is SingletonSchema && schema.dartType != 'String'
-            ? '.toString()'
-            : '');
+  String dartToQuery(String input) {
+    throw Exception('$dartType not supported as query parameter');
   }
+
+  String dartToQueryEntry(String key, String input) =>
+      "'$key': ${dartToQuery(input)}";
+  bool get dartNeedFinal => false;
 
   List<DefinitionSchema> get definitionSchemas => [];
   void replaceSchema(Schema from, Schema to) {}
@@ -323,6 +322,9 @@ class ArraySchema extends Schema {
   String dartToJson(String input) =>
       '$input.map((v) => ${items.dartToJson('v')}).toList()';
   @override
+  String dartToQuery(String input) =>
+      '$input.map((v) => ${items.dartToQuery('v')}).toList()';
+  @override
   List<DefinitionSchema> get definitionSchemas => items.definitionSchemas;
 
   @override
@@ -347,6 +349,8 @@ class EnumSchema extends DefinitionSchema {
   String dartToJson(String input) =>
       "{${values.map((v) => "$dartType.${variableName(v)}: '$v'").join(', ')}}[$input]!";
   @override
+  String dartToQuery(String input) => dartToJson(input);
+  @override
   String get definition =>
       super.definition +
       'enum $dartType {\n  ${(values.toList()..sort()).map(variableName).join(', ')}\n}\n';
@@ -363,7 +367,9 @@ class EnumSchema extends DefinitionSchema {
 
 class SingletonSchema extends Schema {
   static String _id(String input) => input;
-  SingletonSchema(this.dartType, {this.fromJson, this.toJson = _id});
+  static String _toString(String input) => '$input.toString()';
+  SingletonSchema(this.dartType,
+      {this.fromJson, this.toJson = _id, this.toQuery = _toString});
 
   @override
   final String dartType;
@@ -372,12 +378,15 @@ class SingletonSchema extends Schema {
       fromJson?.call(input) ?? '$input as $dartType';
   @override
   String dartToJson(String input) => toJson(input);
+  @override
+  String dartToQuery(String input) => toQuery(input);
 
   final String Function(String input)? fromJson;
   final String Function(String input) toJson;
+  final String Function(String input) toQuery;
 
   static final map = {
-    'string': SingletonSchema('String'),
+    'string': SingletonSchema('String', toQuery: _id),
     'string/uri': SingletonSchema('Uri',
         fromJson: (x) => 'Uri.parse($x)', toJson: (x) => '$x.toString()'),
     'integer': SingletonSchema('int'),
@@ -404,6 +413,9 @@ class OptionalSchema extends Schema {
   @override
   String dartToJsonEntry(String key, String input) =>
       'if ($input != null) ${inner.dartToJsonEntry(key, input)}';
+  @override
+  String dartToQueryEntry(String key, String input) =>
+      'if ($input != null) ${inner.dartToQueryEntry(key, input)}';
   @override
   List<DefinitionSchema> get definitionSchemas => inner.definitionSchemas;
   @override
