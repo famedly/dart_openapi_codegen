@@ -494,6 +494,19 @@ class Operation {
         : '';
   }
 
+  String get dartResponseComment {
+    final _response = response;
+    if (unpackedResponse &&
+        _response is ObjectSchema &&
+        _response.allProperties.length == 1 &&
+        _response.inlinable) {
+      final key = _response.allProperties.keys.single;
+      final description = _response.allProperties.values.single.description;
+      return '\n\nreturns `$key`${description != null ? ':\n$description' : ''}';
+    }
+    return '';
+  }
+
   bool accessToken;
   bool deprecated;
   bool unpackedBody;
@@ -712,7 +725,7 @@ String generateApi(List<Operation> operations) {
   for (final op in operations) {
     ops += '\n';
     ops +=
-        '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('')).replaceAll('\n', '\n  \/\/\/ ')}\n';
+        '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('') + op.dartResponseComment).replaceAll('\n', '\n  \/\/\/ ')}\n';
     if (op.deprecated) ops += '  @deprecated\n';
     ops +=
         '  Future<${op.dartResponse?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartPositionalParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').followedBy([
