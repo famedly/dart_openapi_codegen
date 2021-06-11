@@ -50,7 +50,8 @@ abstract class Schema {
     final type = json['type'];
     if (type is List) {
       if (type.length == 2 && type[0] is String && type[1] == 'null') {
-        return Schema.fromJson({...json, 'type': type[0]}, baseName);
+        return OptionalSchema(
+            Schema.fromJson({...json, 'type': type[0]}, baseName));
       } else {
         return Schema.dynamicSchema;
       }
