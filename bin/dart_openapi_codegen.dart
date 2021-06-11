@@ -771,10 +771,15 @@ String generateApi(List<Operation> operations) {
     ops += '    final responseBody = await response.stream.toBytes();\n';
     ops +=
         "    if (response.statusCode != 200) throw Exception('http error response');\n";
-    ops += '    final responseString = utf8.decode(responseBody);\n';
-    ops += '    final json = jsonDecode(responseString);\n';
-    ops +=
-        '    return ${op.dartResponse?.dartFromJson('json${op.dartResponseExtract}') ?? 'null'};\n';
+    if (op.response == SingletonSchema.map['file']) {
+      ops +=
+          "    return FileResponse(contentType: response.headers['content-type'], data: responseBody);";
+    } else {
+      ops += '    final responseString = utf8.decode(responseBody);\n';
+      ops += '    final json = jsonDecode(responseString);\n';
+      ops +=
+          '    return ${op.dartResponse?.dartFromJson('json${op.dartResponseExtract}') ?? 'null'};\n';
+    }
     ops += '  }\n';
   }
   ops += '}\n';
