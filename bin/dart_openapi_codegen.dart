@@ -824,6 +824,13 @@ void main(List<String> arguments) async {
     operations.retainWhere((op) => includeApi.contains(variableName(op.id)));
   }
   for (final voidOp in operations.where((op) => voidResponse.contains(op.id))) {
+    final response = voidOp.response;
+    if (response == Schema.voidSchema) {
+      print('unneeded voidResponse: ${voidOp.id}');
+    }
+    if (response is ObjectSchema) {
+      print('object in voidResponse: ${voidOp.id}');
+    }
     voidOp.response = Schema.voidSchema;
   }
   mergeDuplicates(operations);
