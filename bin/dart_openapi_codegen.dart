@@ -31,11 +31,10 @@ abstract class Schema {
   String dartToJson(String input) => input;
   String dartToJsonEntry(String key, String input) =>
       "'$key': ${dartToJson(input)}";
-  String dartToJsonPromotableEntry(String key, String input) =>
-      dartToJsonEntry(key, input);
-  String dartToQueryPromotableEntry(String key, String input) {
+  bool get dartNeedFinal => false;
+  String dartToQueryEntry(String key, String input) {
     final schema = nonOptional;
-    return dartToJsonPromotableEntry(key, input) +
+    return dartToJsonEntry(key, input) +
         (schema is SingletonSchema && schema.dartType != 'String'
             ? '.toString()'
             : '');
@@ -180,16 +179,18 @@ class ObjectSchema extends DefinitionSchema {
               '      ${e.value.schema.dartToJsonEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
-  String get dartToJsonPromotableMap =>
-      '{\n' +
-      (inheritedAdditionalProperties != null
-          ? '      ...additionalProperties,\n'
-          : '') +
-      properties.entries
-          .map((e) =>
-              '      ${e.value.schema.dartToJsonPromotableEntry(e.key, variableName(e.key))},\n')
-          .join('') +
-      '    }';
+
+  String get dartToJsonBody {
+    final declarations = allProperties.entries
+        .where((e) => e.value.schema.dartNeedFinal)
+        .map((e) => variableName(e.key))
+        .map((x) => '    final $x = this.$x;\n')
+        .join('');
+    return declarations.isEmpty
+        ? '=> $dartToJsonMap;'
+        : '{\n$declarations    return $dartToJsonMap;\n  }';
+  }
+
   @override
   String get definition =>
       super.definition +
@@ -212,7 +213,7 @@ class ObjectSchema extends DefinitionSchema {
           '    additionalProperties = Map.fromEntries(json.entries.where((e) => ![${allProperties.keys.map((k) => "'$k'").join(', ')}].contains(e.key)).map((e) => MapEntry(e.key, ${inheritedAdditionalProperties!.dartFromJson('e.value')})))'
       ]).join(',\n') +
       ';\n'
-          '  Map<String, dynamic> toJson() => $dartToJsonMap;\n' +
+          '  Map<String, dynamic> toJson() $dartToJsonBody\n' +
       dartAllProperties.entries
           .map((e) =>
               '${e.value.description?.replaceAll(RegExp('^|\n'), '\n  /// ') ?? ''}\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
@@ -402,12 +403,11 @@ class OptionalSchema extends Schema {
       '((v) => v != null ? ${inner.dartFromJson('v')} : null)($input)';
   @override
   String dartToJsonEntry(String key, String input) =>
-      'if ($input != null) ${inner.dartToJsonEntry(key, '$input!')}';
-  @override
-  String dartToJsonPromotableEntry(String key, String input) =>
       'if ($input != null) ${inner.dartToJsonEntry(key, input)}';
   @override
   List<DefinitionSchema> get definitionSchemas => inner.definitionSchemas;
+  @override
+  bool get dartNeedFinal => true;
   Schema inner;
   OptionalSchema._(this.inner);
   factory OptionalSchema(Schema schema) =>
@@ -547,7 +547,7 @@ class Operation {
       parameters.entries
           .where((e) => e.value.type == ParameterType.query)
           .map((e) =>
-              '      ${e.value.schema.dartToQueryPromotableEntry(e.key, variableName(e.key))},\n')
+              '      ${e.value.schema.dartToQueryEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
 
@@ -558,7 +558,7 @@ class Operation {
     final bodyParam = bodyParams.single;
     final bodySchema = bodyParam.value.schema;
     if (unpackedBody && bodySchema is ObjectSchema && bodySchema.inlinable) {
-      return bodySchema.dartToJsonPromotableMap;
+      return bodySchema.dartToJsonMap;
     }
     return variableName(bodyParam.key);
   }
