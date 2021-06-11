@@ -27,16 +27,17 @@ String stripDoc(String s) => s
 abstract class Schema {
   String get dartType;
   String? get dartDefault => null;
+  String dartCondition(String input) => '';
   String dartFromJson(String input);
   String dartToJson(String input) => input;
   String dartToJsonEntry(String key, String input) =>
-      "'$key': ${dartToJson(input)}";
+      "${dartCondition(input)}'$key': ${dartToJson(input)}";
   String dartToQuery(String input) {
     throw Exception('$dartType not supported as query parameter');
   }
 
   String dartToQueryEntry(String key, String input) =>
-      "'$key': ${dartToQuery(input)}";
+      "${dartCondition(input)}'$key': ${dartToQuery(input)}";
   bool get dartNeedFinal => false;
 
   List<DefinitionSchema> get definitionSchemas => [];
@@ -409,14 +410,14 @@ class OptionalSchema extends Schema {
   @override
   String get dartType => '${inner.dartType}?';
   @override
+  String dartCondition(String input) => 'if ($input != null) ';
+  @override
   String dartFromJson(String input) =>
       '((v) => v != null ? ${inner.dartFromJson('v')} : null)($input)';
   @override
-  String dartToJsonEntry(String key, String input) =>
-      'if ($input != null) ${inner.dartToJsonEntry(key, input)}';
+  String dartToJson(String input) => inner.dartToJson(input);
   @override
-  String dartToQueryEntry(String key, String input) =>
-      'if ($input != null) ${inner.dartToQueryEntry(key, input)}';
+  String dartToQuery(String input) => inner.dartToQuery(input);
   @override
   List<DefinitionSchema> get definitionSchemas => inner.definitionSchemas;
   @override
@@ -514,6 +515,8 @@ class Operation {
   Map<String, Parameter> parameters;
   Map<String, Parameter> get queryParameters => Map.fromEntries(
       parameters.entries.where((e) => e.value.type == ParameterType.query));
+  Map<String, Parameter> get headerParameters => Map.fromEntries(
+      parameters.entries.where((e) => e.value.type == ParameterType.header));
   Map<String, Parameter> get dartParameters => unpackedBody
       ? Map.fromEntries(parameters.entries.expand((e) {
           final s = e.value.schema;
@@ -747,6 +750,10 @@ String generateApi(List<Operation> operations) {
     if (op.accessToken) {
       ops +=
           "    request.headers['authorization'] = 'Bearer \${bearerToken!}';\n";
+    }
+    for (final e in op.headerParameters.entries) {
+      ops +=
+          "    ${e.value.schema.dartCondition(variableName(e.key))}request.headers['${e.key.toLowerCase()}'] = ${e.value.schema.dartToQuery(variableName(e.key))};\n";
     }
     if (op.dartBody != null) {
       ops += "    request.headers['content-type'] = 'application/json';\n"
