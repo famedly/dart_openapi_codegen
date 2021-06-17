@@ -551,6 +551,12 @@ class Operation {
       };
   Set<DefinitionSchema> get definitionSchemas =>
       schemas.expand((s) => s.definitionSchemas).toSet();
+  Set<Schema> get allSchemas => {
+        ...parameters.values.map((param) => param.schema),
+        if (response != null) response!,
+      };
+  Set<DefinitionSchema> get allDefinitionSchemas =>
+      allSchemas.expand((s) => s.definitionSchemas).toSet();
   void replaceSchema(Schema from, Schema to) {
     for (final parameter in parameters.values) {
       if (parameter.schema == from) {
@@ -671,7 +677,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
 
 void applyRenameRules(List<Operation> operations, List<dynamic> renameRules) {
   final definitionSchemas =
-      operations.expand((op) => op.definitionSchemas).toSet();
+      operations.expand((op) => op.allDefinitionSchemas).toSet();
   final definitionSchemasMap = <String, List<DefinitionSchema>>{};
   for (final schema in definitionSchemas) {
     (definitionSchemasMap[schema.dartType] ??= []).add(schema);
