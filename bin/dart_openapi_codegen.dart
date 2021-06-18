@@ -832,6 +832,7 @@ void main(List<String> arguments) async {
       ? loadYaml(await File(arguments[2]).readAsString())
       : {};
   final List<dynamic> renameRules = rules['rename'] ?? [];
+  final List<dynamic> replaceRules = rules['replace'] ?? [];
   final List<dynamic>? includeApi = rules['includeApi'];
   final List<dynamic> exclude = rules['exclude'] ?? [];
   final List<dynamic> voidResponse = rules['voidResponse'] ?? [];
@@ -853,6 +854,7 @@ void main(List<String> arguments) async {
     }
     voidOp.response = Schema.voidSchema;
   }
+  applyRenameRules(operations, replaceRules);
   mergeDuplicates(operations);
   applyRenameRules(operations, renameRules);
   mergeDuplicates(operations);
