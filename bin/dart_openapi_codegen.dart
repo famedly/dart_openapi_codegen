@@ -741,7 +741,8 @@ String generateApi(List<Operation> operations) {
   var ops =
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
-      "import 'package:http/http.dart';\nimport 'dart:convert';\nimport 'dart:typed_data';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n";
+      "import 'package:http/http.dart';\nimport 'dart:convert';\nimport 'dart:typed_data';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n"
+      "  Never unexpectedResponse(BaseResponse response, Uint8List body) { throw Exception('http error response'); }\n";
   for (final op in operations) {
     ops += '\n';
     ops +=
@@ -776,7 +777,7 @@ String generateApi(List<Operation> operations) {
     ops += '    final response = await httpClient.send(request);\n';
     ops += '    final responseBody = await response.stream.toBytes();\n';
     ops +=
-        "    if (response.statusCode != 200) throw Exception('http error response');\n";
+        '    if (response.statusCode != 200) unexpectedResponse(response, responseBody);\n';
     if (op.response == SingletonSchema.map['file']) {
       ops +=
           "    return FileResponse(contentType: response.headers['content-type'], data: responseBody);";
