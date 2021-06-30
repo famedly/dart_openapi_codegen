@@ -1,8 +1,22 @@
 #!/bin/sh -e
-[ -d matrix-doc ] || git clone https://github.com/matrix-org/matrix-doc.git
+if ! [ -d matrix-doc ]
+then
+git clone https://github.com/matrix-org/matrix-doc.git
 (
-	cd matrix-doc
-	./scripts/dump-swagger.py -c r0
-	sed -i 's`](/`](https://spec.matrix.org/unstable/`g' scripts/swagger/api-docs.json
+cd matrix-doc
+git remote add fork https://github.com/lukaslihotzki/matrix-doc.git
+git fetch fork
+git merge --no-edit fork/format-uri
+git merge --no-edit fork/parameter-order
+git merge --no-edit fork/fix-putRoomKeysVersion
 )
-ln -sf matrix-doc/scripts/swagger/api-docs.json matrix.json
+fi
+
+(cd matrix-doc && ./scripts/dump-swagger.py -c r0)
+rm matrix.json
+< matrix-doc/scripts/swagger/api-docs.json \
+sed 's`](/`](https://spec.matrix.org/unstable/`g' |
+jq '.paths |= with_entries(
+  if .key | contains("/room_keys/") then .key |= sub("/r0/";"/unstable/") else . end
+)' \
+> matrix.json
