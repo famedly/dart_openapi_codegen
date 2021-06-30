@@ -666,8 +666,10 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
       final responseSchema = responseSchemas['200'];
       var unpackedResponse = false;
       if (responseSchema is ObjectSchema) {
-        unpackedResponse = responseSchema.allProperties.keys
-            .every(path.split('/').last.contains);
+        // quirk: If a response contains a property like m.upload.size (dots),
+        // the response should be extensible, therefore not unpacked.
+        unpackedResponse =
+            responseSchema.allProperties.keys.every((k) => !k.contains('.'));
       }
 
       operations.add(Operation(
