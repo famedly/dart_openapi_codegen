@@ -478,7 +478,16 @@ class Operation {
       required this.deprecated,
       required this.unpackedBody,
       required this.unpackedResponse,
-      this.parameters = const {}});
+      this.parameters = const {}}) {
+    parameters.values.forEach((param) {
+      final schema = param.schema;
+      if (param.type == ParameterType.body && schema is OptionalSchema) {
+        // quirk: forbid optional schema as body
+        print('optional body parameter in $id');
+        param.schema = schema.inner;
+      }
+    });
+  }
   String id;
   String? description;
   String path;
