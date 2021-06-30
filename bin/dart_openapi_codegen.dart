@@ -24,6 +24,9 @@ String stripDoc(String s) => s
     .replaceAll(RegExp('/\\*(\\*(?!/)|[^*])*\\*/[ \n]*'), '')
     .replaceAll(RegExp('@_[a-zA-Z0-9]*\\([^)]*\\)[ \n]*'), '');
 
+// quirk: ignore meaningless titles like 'body'
+String? fixTitle(String? s) => s != 'body' ? s : null;
+
 abstract class Schema {
   String get dartType;
   String? get dartDefault => null;
@@ -109,8 +112,8 @@ abstract class DefinitionSchema extends Schema {
   });
 
   DefinitionSchema.fromJson(Map<String, dynamic> json, String baseName)
-      : title = json['title'] ?? baseName,
-        nameSource = json['title'] == null ? 'generated' : 'spec',
+      : title = fixTitle(json['title']) ?? baseName,
+        nameSource = fixTitle(json['title']) == null ? 'generated' : 'spec',
         description = json['description'];
 }
 
