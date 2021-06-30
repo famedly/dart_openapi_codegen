@@ -1,25 +1,98 @@
 ---
-include:
-  - getWellknown
-  - getCapabilities
-  - deleteRoomAlias
-  - getJoinedRooms
-  - logout
-  - logoutAll
-  - getDisplayName
-  - setDisplayName
-  - deleteRoomKeysVersion
-  - ban
-  - forgetRoom
-  - kick
-  - unban
-  - getAccountData
-  - setAccountData
-  - getAccountDataPerRoom
-  - setAccountDataPerRoom
-  - deleteRoomTag
-  - getVersions
-  - getConfig
+exclude:
+  - getAccount3PIDs
+  - post3PIDs
+  - add3PID
+  - bind3PID
+  - delete3pidFromAccount
+  - unbind3pidFromAccount
+  - deactivateAccount
+  - changePassword
+  - getTokenOwner
+  - getWhoIs
+  - createRoom
+  - deleteDevices
+  - getDevices
+  - deleteDevice
+  - getDevice
+  - updateDevice
+  - updateAppserviceRoomDirectoryVisibility
+  - getRoomIdByAlias
+  - setRoomAlias
+  - getEvents
+  - getOneEvent
+  - initialSync
+  - joinRoom
+  - getKeysChanges
+  - claimKeys
+  - queryKeys
+  - uploadKeys
+  - knockRoom
+  - getLoginFlows
+  - login
+  - getNotifications
+  - getPresence
+  - setPresence
+  - getUserProfile
+  - getAvatarUrl
+  - setAvatarUrl
+  - getPublicRooms
+  - queryPublicRooms
+  - getPushers
+  - postPusher
+  - getPushRules
+  - deletePushRule
+  - getPushRule
+  - setPushRule
+  - getPushRuleActions
+  - setPushRuleActions
+  - isPushRuleEnabled
+  - setPushRuleEnabled
+  - register
+  - checkUsernameAvailability
+  - postRoomKeysKey
+  - postRoomKeysKeyRoomId
+  - postRoomKeysKeyRoomIdSessionId
+  - getRoomKeysVersionCurrent
+  - postRoomKeysVersion
+  - getRoomKeysVersion
+  - putRoomKeysVersion
+  - getLocalAliases
+  - getEventContext
+  - getOneRoomEvent
+  - roomInitialSync
+  - inviteBy3PID
+  - inviteUser
+  - joinRoomById
+  - getJoinedMembersByRoom
+  - leaveRoom
+  - getMembersByRoom
+  - getRoomEvents
+  - setReadMarker
+  - postReceipt
+  - redactEvent
+  - reportContent
+  - sendMessage
+  - getRoomState
+  - getRoomStateWithKey
+  - setRoomStateWithKey
+  - setTyping
+  - upgradeRoom
+  - search
+  - sendToDevice
+  - sync
+  - defineFilter
+  - getFilter
+  - requestOpenIdToken
+  - getRoomTags
+  - setRoomTag
+  - searchUserDirectory
+  - getTurnServer
+  - getContent
+  - getContentOverrideName
+  - getUrlPreview
+  - getContentThumbnail
+  - uploadContent
 voidResponse:
   - logout
   - logoutAll
@@ -94,6 +167,10 @@ rename:
     to: MembershipState
   - from: GetConfigResponse
     to: ServerConfig
+  - from: GetTurnServerResponse
+    to: TurnServerCredentials
+  - from: RequestOpenIdTokenResponse
+    to: OpenIdCredentials
 
   # enums
   - from: SetPresence
