@@ -675,7 +675,7 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
       operations.add(Operation(
         id: operationId,
         description: mcontent['description'],
-        path: path,
+        path: path.trim(), // quirk: trim path for inviteUser
         method: method,
         response: responseSchema,
         parameters: {...params, ...localParams},
