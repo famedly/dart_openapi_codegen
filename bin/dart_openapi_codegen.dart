@@ -624,7 +624,8 @@ void applyRenameRules(List<Operation> operations, List<dynamic> renameRules) {
     for (final candidate in (definitionSchemasMap[from] ?? [])) {
       if ((property == null ||
               (candidate is ObjectSchema &&
-                  candidate.properties[property] != null)) &&
+                  candidate.properties.keys
+                      .any((p) => variableName(p) == property))) &&
           (baseOf == null ||
               (definitionSchemasMap[baseOf] ?? []).any((c) =>
                   c is ObjectSchema && c.baseClasses.contains(candidate))) &&
@@ -632,7 +633,7 @@ void applyRenameRules(List<Operation> operations, List<dynamic> renameRules) {
               (definitionSchemasMap[usedBy] ?? [])
                   .any((c) => c.definitionSchemas.contains(candidate)) ||
               operations
-                  .where((op) => op.id == usedBy)
+                  .where((op) => variableName(op.id) == usedBy)
                   .any((op) => op.definitionSchemas.contains(candidate))) &&
           (base == null ||
               (candidate is ObjectSchema &&
