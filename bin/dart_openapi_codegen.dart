@@ -483,6 +483,7 @@ class Operation {
       Map.fromEntries(dartParameters.entries.where(isPositionalParameter));
   Map<String, Parameter> get dartNamedParameters => Map.fromEntries(
       dartParameters.entries.where((p) => !isPositionalParameter(p)));
+  // quirk: parameter is positional if its name is the last part of the path
   bool isPositionalParameter(MapEntry<String, Parameter> e) =>
       e.value.schema.dartDefault == null && e.value.schema is! OptionalSchema ||
       path.split('/').last == e.key;
