@@ -6,14 +6,13 @@ git clone https://github.com/matrix-org/matrix-doc.git
 cd matrix-doc
 git remote add fork https://github.com/lukaslihotzki/matrix-doc.git
 git fetch fork
-git merge --no-edit fork/format-uri
 git merge --no-edit fork/parameter-order
 git merge --no-edit fork/fix-putRoomKeysVersion
 )
 fi
 
 (cd matrix-doc && ./scripts/dump-swagger.py -c r0)
-rm matrix.json
+rm -f matrix.json
 < matrix-doc/scripts/swagger/api-docs.json \
 sed 's`](/`](https://spec.matrix.org/unstable/`g' |
 jq '.paths |= with_entries(
