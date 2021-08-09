@@ -6,7 +6,6 @@ git clone https://github.com/matrix-org/matrix-doc.git
 cd matrix-doc
 git remote add fork https://github.com/lukaslihotzki/matrix-doc.git
 git fetch fork
-git merge --no-edit fork/format-uri
 git merge --no-edit fork/parameter-order
 git merge --no-edit fork/fix-putRoomKeysVersion
 )
