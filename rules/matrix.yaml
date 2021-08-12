@@ -12,6 +12,8 @@ exclude:
   - uploadKeys # missing fallback keys
   - postPusher # need to add append
   - roomInitialSync # deprecated
+  - redirectToSSO # redirect
+  - redirectToIdP # redirect
   - SyncUpdate
   - AuthenticationData
   - AuthenticationIdentifier
@@ -19,6 +21,7 @@ exclude:
   - MatrixDeviceKeys
   - DeviceInformation
   - MatrixEvent
+  - RoomKeysRequired
 voidResponse:
   - logout
   - logoutAll
@@ -58,6 +61,7 @@ voidResponse:
   - reportContent
   - updateRoomKeysBackup
   - deleteRoomKeysBackup
+  - uploadCrossSigningKeys
 replace:
   - from: Event
     usedBy: getOneEvent
@@ -138,6 +142,7 @@ rename:
   - from: GetUserProfileResponse
     to: ProfileInformation
   - from: User
+    usedBy: searchUserDirectory
     to: Profile
   - from: Filter
     property: genericSearchTerm
@@ -150,8 +155,10 @@ rename:
     to: MatrixDeviceKeys
   - from: DeviceInformation
     to: MatrixDeviceKeys
-  - from: PostRoomKeysKeyRequest
+  - from: PutRoomKeysRequest
     to: RoomKeys
+  - from: GetRoomKeysResponse
+    to: RoomKeysRequired
   - from: SyncResponse
     to: SyncUpdate
   - from: GetEventsResponse
@@ -167,6 +174,9 @@ rename:
   - from: Filter
     usedBy: search
     to: SearchFilter
+  - from: User
+    usedBy: queryUserByID
+    to: ThirdPartyUser
 
   # enums
   - from: SetPresence

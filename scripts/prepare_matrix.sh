@@ -16,6 +16,6 @@ rm -f matrix.json
 < matrix-doc/scripts/swagger/api-docs.json \
 sed 's`](/`](https://spec.matrix.org/unstable/`g' |
 jq '.paths |= with_entries(
-  if .key | contains("/room_keys/") then .key |= sub("/r0/";"/unstable/") else . end
+  if .key | contains("/room_keys/") or contains("/keys/device_signing") then .key |= sub("/r0/";"/unstable/") else . end
 )' \
 > matrix.json

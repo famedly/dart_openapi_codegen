@@ -672,13 +672,17 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
             responseSchema.allProperties.keys.every((k) => !k.contains('.'));
       }
 
+      final allParams = Map.fromEntries(
+          {...params, ...localParams}.entries.toList()
+            ..sort((a, b) => a.value.type.index - b.value.type.index));
+
       operations.add(Operation(
         id: operationId,
         description: mcontent['description'],
         path: path.trim(), // quirk: trim path for inviteUser
         method: method,
         response: responseSchema,
-        parameters: {...params, ...localParams},
+        parameters: allParams,
         accessToken: mcontent['security']?[0]?['accessToken'] != null,
         deprecated: mcontent['deprecated'] ?? false,
         unpackedBody: true,
