@@ -7,7 +7,6 @@ imports:
   - ../model/sync_update.dart
   - ../model/matrix_event.dart
 exclude:
-  - getEvents # missing room_id parameter
   - initialSync # deprecated
   - uploadKeys # missing fallback keys
   - postPusher # need to add append
@@ -102,6 +101,9 @@ replace:
   - from: Event
     usedBy: Results
     to: MatrixEvent
+  - from: RoomEvent
+    usedBy: peekEvents
+    to: MatrixEvent
 rename:
   - from: Event
     baseOf: SyncRoomEvent
@@ -162,6 +164,8 @@ rename:
   - from: SyncResponse
     to: SyncUpdate
   - from: GetEventsResponse
+    to: EventsSyncUpdate
+  - from: PeekEventsResponse
     to: EventsSyncUpdate
   - from: GetEventContextResponse
     to: EventContext
