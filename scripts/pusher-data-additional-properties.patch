@@ -10,3 +10,15 @@ index 9feccb4f..99753841 100644
                        properties:
                          url:
                            type: string
+diff --git a/data/api/client-server/versions.yaml b/data/api/client-server/versions.yaml
+index e359de3c..fc68a903 100644
+--- a/data/api/client-server/versions.yaml
++++ b/data/api/client-server/versions.yaml
+@@ -59,6 +59,7 @@ paths:
+               }
+           schema:
+             type: object
++            additionalProperties: true
+             properties:
+               versions:
+                 type: array

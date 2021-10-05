@@ -210,8 +210,9 @@ class ObjectSchema extends DefinitionSchema {
       '  });\n\n' +
       '  $dartType.fromJson(Map<String, dynamic> json) :\n' +
       allProperties.entries
-          .map((e) =>
-              '    ${variableName(e.key)} = ${e.value.schema.dartFromJson("json['${e.key}']")}')
+          .map((e) => dartType == 'BasicEvent' && e.key == 'content'
+              ? 'content = (json[\'content\'] as Map<String, dynamc>).copy()'
+              : '    ${variableName(e.key)} = ${e.value.schema.dartFromJson("json['${e.key}']")}')
           .followedBy([
         if (inheritedAdditionalProperties != null)
           '    additionalProperties = Map.fromEntries(json.entries.where((e) => ![${allProperties.keys.map((k) => "'$k'").join(', ')}].contains(e.key)).map((e) => MapEntry(e.key, ${inheritedAdditionalProperties!.dartFromJson('e.value')})))'
@@ -603,23 +604,6 @@ class Operation {
               '      ${e.value.schema.dartToQueryEntry(e.key, variableName(e.key))},\n')
           .join('') +
       '    }';
-
-  String get dartSetBody {
-    final bodyParams =
-        parameters.entries.where((e) => e.value.type == ParameterType.body);
-    if (bodyParams.isEmpty) return '';
-    final bodyParam = bodyParams.single;
-    final bodySchema = bodyParam.value.schema;
-    if (bodySchema == SingletonSchema.map['string/byte']) {
-      return '    request.bodyBytes = ${variableName(bodyParam.key)};\n';
-    }
-    final jsonBody =
-        (unpackedBody && bodySchema is ObjectSchema && bodySchema.inlinable)
-            ? bodySchema.dartToJsonMap
-            : bodySchema.dartToJson(variableName(bodyParam.key));
-    return "    request.headers['content-type'] = 'application/json';\n"
-        '    request.bodyBytes = utf8.encode(jsonEncode($jsonBody));\n';
-  }
 }
 
 List<Operation> operationsFromApi(Map<String, dynamic> api) {
@@ -747,7 +731,7 @@ void numberConflicts(List<Operation> operations) {
 }
 
 String generateModel(List<Operation> operations) {
-  return "import 'internal.dart';\n\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
+  return "import 'internal.dart';\nimport '../utils/map_copy_extension.dart';\n\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
       operations
           .expand((op) => op.definitionSchemas)
           .toSet()
@@ -759,8 +743,9 @@ String generateApi(List<Operation> operations) {
   var ops =
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
-      "import 'package:http/http.dart';\nimport 'dart:convert';\nimport 'dart:typed_data';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n"
-      "  Never unexpectedResponse(BaseResponse response, Uint8List body) { throw Exception('http error response'); }\n";
+      "import 'package:http/http.dart';\nimport 'dart:convert';\nimport 'dart:typed_data';\n\nabstract class Api {\n  Uri? baseUri;\n  Api({this.baseUri});\n"
+      '  Future<Map<String, dynamic>> doRequest({required Request request, Map<String, dynamic>? json, required bool authenticated});\n'
+      '  Future<StreamedResponse> doRawRequest({required Request request, Map<String, dynamic>? json, required bool authenticated});\n';
   for (final op in operations) {
     ops += '\n';
     ops +=
@@ -783,27 +768,43 @@ String generateApi(List<Operation> operations) {
     ops += ');\n';
     ops +=
         "    final request = Request('${op.method.toUpperCase()}', baseUri!.resolveUri(requestUri));\n";
-    if (op.accessToken) {
-      ops +=
-          "    request.headers['authorization'] = 'Bearer \${bearerToken!}';\n";
-    }
     for (final e in op.headerParameters.entries) {
       ops +=
           "    ${e.value.schema.dartCondition(variableName(e.key))}request.headers['${e.key.toLowerCase()}'] = ${e.value.schema.dartToQuery(variableName(e.key))};\n";
     }
-    ops += op.dartSetBody;
-    ops += '    final response = await httpClient.send(request);\n';
-    ops += '    final responseBody = await response.stream.toBytes();\n';
+    // add the body to the `request` only if it is *not* json
+    final bodyParams =
+        op.parameters.entries.where((e) => e.value.type == ParameterType.body);
+    if (bodyParams.isNotEmpty) {
+      final bodyParam = bodyParams.single;
+      if (bodyParam.value.schema == SingletonSchema.map['string/byte']) {
+        ops += '    request.bodyBytes = ${variableName(bodyParam.key)};\n';
+      }
+    }
     ops +=
-        '    if (response.statusCode != 200) unexpectedResponse(response, responseBody);\n';
+        '    final response = await ${op.response == SingletonSchema.map['file'] ? 'doRawRequest' : 'doRequest'}(\n';
+    ops += '      request: request,\n';
+    if (bodyParams.isNotEmpty) {
+      final bodyParam = bodyParams.single;
+      final bodySchema = bodyParam.value.schema;
+      if (bodySchema != SingletonSchema.map['string/byte']) {
+        final jsonBody = (op.unpackedBody &&
+                bodySchema is ObjectSchema &&
+                bodySchema.inlinable)
+            ? bodySchema.dartToJsonMap
+            : bodySchema.dartToJson(variableName(bodyParam.key));
+        ops += '       json: $jsonBody,\n';
+      }
+    }
+    ops += '       authenticated: ${op.accessToken},\n';
+    ops += '    );\n';
     if (op.response == SingletonSchema.map['file']) {
+      ops += '    final responseBody = await response.stream.toBytes();\n';
       ops +=
           "    return FileResponse(contentType: response.headers['content-type'], data: responseBody);";
     } else {
-      ops += '    final responseString = utf8.decode(responseBody);\n';
-      ops += '    final json = jsonDecode(responseString);\n';
       ops +=
-          '    return ${op.dartResponse?.dartFromJson('json${op.dartResponseExtract}') ?? 'null'};\n';
+          '    return ${op.dartResponse?.dartFromJson('response${op.dartResponseExtract}') ?? 'null'};\n';
     }
     ops += '  }\n';
   }
