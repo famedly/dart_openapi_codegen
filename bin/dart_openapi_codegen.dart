@@ -616,7 +616,7 @@ class Operation {
     final jsonBody =
         (unpackedBody && bodySchema is ObjectSchema && bodySchema.inlinable)
             ? bodySchema.dartToJsonMap
-            : variableName(bodyParam.key);
+            : bodySchema.dartToJson(variableName(bodyParam.key));
     return "    request.headers['content-type'] = 'application/json';\n"
         '    request.bodyBytes = utf8.encode(jsonEncode($jsonBody));\n';
   }
