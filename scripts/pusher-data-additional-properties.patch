@@ -1,0 +1,12 @@
+diff --git a/data/api/client-server/pusher.yaml b/data/api/client-server/pusher.yaml
+index 9feccb4f..99753841 100644
+--- a/data/api/client-server/pusher.yaml
++++ b/data/api/client-server/pusher.yaml
+@@ -110,6 +110,7 @@ paths:
+                         A dictionary of information for the pusher implementation
+                         itself.
+                       title: PusherData
++                      additionalProperties: true
+                       properties:
+                         url:
+                           type: string

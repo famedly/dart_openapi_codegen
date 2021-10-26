@@ -10,6 +10,7 @@ git fetch fork
 git merge --no-edit fork/parameter-order
 git merge --no-edit fork/fix-putRoomKeysVersion
 git merge --no-edit fork/include-peek-events
+git apply ../scripts/pusher-data-additional-properties.patch
 )
 fi
 
