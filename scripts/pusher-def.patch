@@ -1,0 +1,158 @@
+--- /dev/null
++++ b/data/api/client-server/definitions/pusher.yaml
+@@ -0,0 +1,79 @@
++# Copyright 2016 OpenMarket Ltd
++# Copyright 2018 New Vector Ltd
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++type: object
++title: Pusher
++properties:
++  pushkey:
++    type: string
++    description: |-
++      This is a unique identifier for this pusher. See `/set` for
++      more detail.
++      Max length, 512 bytes.
++  kind:
++    type: string
++    description: |-
++      The kind of pusher. `"http"` is a pusher that
++      sends HTTP pokes.
++  app_id:
++    type: string
++    description: |-
++      This is a reverse-DNS style identifier for the application.
++      Max length, 64 chars.
++  app_display_name:
++    type: string
++    description: |-
++      A string that will allow the user to identify what application
++      owns this pusher.
++  device_display_name:
++    type: string
++    description: |-
++      A string that will allow the user to identify what device owns
++      this pusher.
++  profile_tag:
++    type: string
++    description: |-
++      This string determines which set of device specific rules this
++      pusher executes.
++  lang:
++    type: string
++    description: |-
++      The preferred language for receiving notifications (e.g. 'en'
++      or 'en-US')
++  data:
++    type: object
++    description: |-
++      A dictionary of information for the pusher implementation
++      itself.
++    title: PusherData
++    properties:
++      url:
++        type: string
++        format: uri
++        description: |-
++          Required if `kind` is `http`. The URL to use to send
++          notifications to.
++      format:
++        type: string
++        description: |-
++          The format to use when sending notifications to the Push
++          Gateway.
++required:
++  - pushkey
++  - app_id
++  - kind
++  - app_display_name
++  - device_display_name
++  - lang
++  - data
+--- a/data/api/client-server/pusher.yaml
++++ b/data/api/client-server/pusher.yaml
+@@ -65,71 +65,8 @@ paths:
+                 description: |-
+                   An array containing the current pushers for the user
+                 items:
+-                  type: object
+-                  title: Pusher
+-                  properties:
+-                    pushkey:
+-                      type: string
+-                      description: |-
+-                        This is a unique identifier for this pusher. See `/set` for
+-                        more detail.
+-                        Max length, 512 bytes.
+-                    kind:
+-                      type: string
+-                      description: |-
+-                        The kind of pusher. `"http"` is a pusher that
+-                        sends HTTP pokes.
+-                    app_id:
+-                      type: string
+-                      description: |-
+-                        This is a reverse-DNS style identifier for the application.
+-                        Max length, 64 chars.
+-                    app_display_name:
+-                      type: string
+-                      description: |-
+-                        A string that will allow the user to identify what application
+-                        owns this pusher.
+-                    device_display_name:
+-                      type: string
+-                      description: |-
+-                        A string that will allow the user to identify what device owns
+-                        this pusher.
+-                    profile_tag:
+-                      type: string
+-                      description: |-
+-                        This string determines which set of device specific rules this
+-                        pusher executes.
+-                    lang:
+-                      type: string
+-                      description: |-
+-                        The preferred language for receiving notifications (e.g. 'en'
+-                        or 'en-US')
+-                    data:
+-                      type: object
+-                      description: |-
+-                        A dictionary of information for the pusher implementation
+-                        itself.
+-                      title: PusherData
+-                      properties:
+-                        url:
+-                          type: string
+-                          format: uri
+-                          description: |-
+-                            Required if `kind` is `http`. The URL to use to send
+-                            notifications to.
+-                        format:
+-                          type: string
+-                          description: |-
+-                            The format to use when sending notifications to the Push
+-                            Gateway.
+-                  required:
+-                    - pushkey
+-                    - app_id
+-                    - kind
+-                    - app_display_name
+-                    - device_display_name
+-                    - lang
+-                    - data
++                  allOf:
++                    - $ref: definitions/pusher.yaml
+       tags:
+         - Push notifications
+   "/pushers/set":
