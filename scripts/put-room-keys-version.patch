@@ -1,0 +1,26 @@
+diff --git a/data/api/client-server/key_backup.yaml b/data/api/client-server/key_backup.yaml
+index cce31611..9df380f9 100644
+--- a/data/api/client-server/key_backup.yaml
++++ b/data/api/client-server/key_backup.yaml
+@@ -257,7 +257,7 @@ paths:
+           required: true
+           x-example: "1"
+         - in: body
+-          name: version
++          name: body
+           description: "The backup configuration"
+           required: true
+           schema:
+@@ -284,12 +284,6 @@ paths:
+                     }
+                   }
+                 }
+-              version:
+-                description: |-
+-                  The backup version.  If present, must be the same as the
+-                  version in the path parameter.
+-                type: string
+-                example: "1"
+             required:
+               - algorithm
+               - auth_data

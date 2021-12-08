@@ -1,0 +1,166 @@
+diff --git a/data/api/client-server/key_backup.yaml b/data/api/client-server/key_backup.yaml
+index 7c42f6b5..cce31611 100644
+--- a/data/api/client-server/key_backup.yaml
++++ b/data/api/client-server/key_backup.yaml
+@@ -379,13 +379,6 @@ paths:
+       security:
+         - accessToken: []
+       parameters:
+-        - in: query
+-          type: string
+-          name: version
+-          description: |-
+-            The backup in which to store the key. Must be the current backup.
+-          required: true
+-          x-example: "1"
+         - in: path
+           type: string
+           name: roomId
+@@ -398,6 +391,13 @@ paths:
+           description: The ID of the megolm session that the key is for.
+           required: true
+           x-example: "sessionid"
++        - in: query
++          type: string
++          name: version
++          description: |-
++            The backup in which to store the key. Must be the current backup.
++          required: true
++          x-example: "1"
+         - in: body
+           name: data
+           description: "The key data."
+@@ -450,13 +450,6 @@ paths:
+       security:
+         - accessToken: []
+       parameters:
+-        - in: query
+-          type: string
+-          name: version
+-          description: |-
+-            The backup from which to retrieve the key.
+-          required: true
+-          x-example: "1"
+         - in: path
+           type: string
+           name: roomId
+@@ -469,6 +462,13 @@ paths:
+           description: The ID of the megolm session whose key is requested.
+           required: true
+           x-example: "sessionid"
++        - in: query
++          type: string
++          name: version
++          description: |-
++            The backup from which to retrieve the key.
++          required: true
++          x-example: "1"
+       responses:
+         200:
+           description: The key data
+@@ -495,13 +495,6 @@ paths:
+       security:
+         - accessToken: []
+       parameters:
+-        - in: query
+-          type: string
+-          name: version
+-          description: |-
+-            The backup from which to delete the key
+-          required: true
+-          x-example: "1"
+         - in: path
+           type: string
+           name: roomId
+@@ -514,6 +507,13 @@ paths:
+           description: The ID of the megolm session whose key is to be deleted.
+           required: true
+           x-example: "sessionid"
++        - in: query
++          type: string
++          name: version
++          description: |-
++            The backup from which to delete the key
++          required: true
++          x-example: "1"
+       responses:
+         200:
+           description: The update succeeded
+@@ -556,6 +556,12 @@ paths:
+       security:
+         - accessToken: []
+       parameters:
++        - in: path
++          type: string
++          name: roomId
++          description: The ID of the room that the keys are for.
++          required: true
++          x-example: "!roomid:example.org"
+         - in: query
+           type: string
+           name: version
+@@ -563,12 +569,6 @@ paths:
+             The backup in which to store the keys. Must be the current backup.
+           required: true
+           x-example: "1"
+-        - in: path
+-          type: string
+-          name: roomId
+-          description: The ID of the room that the keys are for.
+-          required: true
+-          x-example: "!roomid:example.org"
+         - in: body
+           description: "The backup data"
+           name: backupData
+@@ -631,6 +631,12 @@ paths:
+       security:
+         - accessToken: []
+       parameters:
++        - in: path
++          type: string
++          name: roomId
++          description: The ID of the room that the requested key is for.
++          required: true
++          x-example: "!roomid:example.org"
+         - in: query
+           type: string
+           name: version
+@@ -638,12 +644,6 @@ paths:
+             The backup from which to retrieve the key.
+           required: true
+           x-example: "1"
+-        - in: path
+-          type: string
+-          name: roomId
+-          description: The ID of the room that the requested key is for.
+-          required: true
+-          x-example: "!roomid:example.org"
+       responses:
+         200:
+           description: |-
+@@ -674,6 +674,12 @@ paths:
+       security:
+         - accessToken: []
+       parameters:
++        - in: path
++          type: string
++          name: roomId
++          description: The ID of the room that the specified key is for.
++          required: true
++          x-example: "!roomid:example.org"
+         - in: query
+           type: string
+           name: version
+@@ -681,12 +687,6 @@ paths:
+             The backup from which to delete the key.
+           required: true
+           x-example: "1"
+-        - in: path
+-          type: string
+-          name: roomId
+-          description: The ID of the room that the specified key is for.
+-          required: true
+-          x-example: "!roomid:example.org"
+       responses:
+         200:
+           description: The update succeeded
