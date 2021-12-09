@@ -7,6 +7,8 @@ cd matrix-doc
 git checkout 8b2c12626094d16457b35b5af4a5ed6e1ac5b4c2
 git apply ../scripts/parameter-order.patch
 git apply ../scripts/put-room-keys-version.patch
+git apply ../scripts/pusher-def.patch
+git apply ../scripts/pusher-id.patch
 git apply ../scripts/pusher-data-additional-properties.patch
 )
 fi
