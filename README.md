@@ -2,9 +2,32 @@
 
 Generate dart client code for OpenAPI specifications
 
-## Set up
+## How to use
 
-Call `pub get` before using the code generator.
+> IMPORTANT: At the moment this code generator works only with JSON formatted OpenAPI files!
+
+1. Add this library to your dev_dependencies (Needs access to this repository via SSH):
+
+```yaml
+dev_dependencies:
+  dart_openapi_codegen:
+    git: git@gitlab.com:famedly/company/frontend/dart_openapi_codegen.git
+```
+
+2. Run `dart pub get`
+
+3. Start the code generator and pass the necessary arguments:
+
+```sh
+dart_openapi_codegen <OUTPUT_DIRECTORY> <PATH_TO_OPENAPI_FILE> <OPTIONAL_RULES_FILE>
+```
+
+Examples:
+
+```sh
+// Create a simple client SDK from an openapi file:
+pub run dart_openapi_codegen ./lib/src/generated ./openapi.json
+```
 
 ## matrix_api_lite
 
