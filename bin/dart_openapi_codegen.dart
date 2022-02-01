@@ -348,17 +348,15 @@ class ArraySchema extends Schema {
 class EnumSchema extends DefinitionSchema {
   List<String> values;
   @override
-  String dartFromJson(String input) =>
-      '{${values.map((v) => "'$v': $dartType.${variableName(v)}").join(', ')}}[$input]!';
+  String dartFromJson(String input) => '$dartType.values.fromString($input)!';
   @override
-  String dartToJson(String input) =>
-      "{${values.map((v) => "$dartType.${variableName(v)}: '$v'").join(', ')}}[$input]!";
+  String dartToJson(String input) => '$input.name';
   @override
   String dartToQuery(String input) => dartToJson(input);
   @override
   String get definition =>
       super.definition +
-      'enum $dartType {\n  ${(values.toList()..sort()).map(variableName).join(', ')}\n}\n';
+      '@EnhancedEnum()\nenum $dartType {\n  ${(values.toList()..sort()).map((v) => '@EnhancedEnumValue(name: \'$v\')\n' + variableName(v)).join(',\n')}\n}\n';
   @override
   List<DefinitionSchema> get definitionSchemas => [this];
 
@@ -747,7 +745,7 @@ void numberConflicts(List<Operation> operations) {
 }
 
 String generateModel(List<Operation> operations) {
-  return "import 'internal.dart';\n\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
+  return "import 'internal.dart';\nimport 'package:enhanced_enum/enhanced_enum.dart';\npart 'model.g.dart';\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
       operations
           .expand((op) => op.definitionSchemas)
           .toSet()
