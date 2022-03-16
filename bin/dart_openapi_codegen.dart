@@ -235,14 +235,16 @@ class ObjectSchema extends DefinitionSchema {
     if (to is ObjectSchema) {
       baseClasses = baseClasses.map((b) => b == from ? to : b).toList();
     }
-    baseClasses.forEach((b) => b.replaceSchema(from, to));
-    properties.values.forEach((v) {
+    for (final b in baseClasses) {
+      b.replaceSchema(from, to);
+    }
+    for (final v in properties.values) {
       if (v.schema == from) {
         v.schema = to;
       } else {
         v.schema.replaceSchema(from, to);
       }
-    });
+    }
     if (additionalProperties == from) {
       additionalProperties = to;
     } else {
@@ -293,7 +295,7 @@ class MapSchema extends Schema {
   @override
   String dartToJson(String input) => valueSchema != null
       ? '$input.map((k, v) => MapEntry(k, ${valueSchema!.dartToJson('v')}))'
-      : '$input';
+      : input;
   @override
   List<DefinitionSchema> get definitionSchemas =>
       valueSchema?.definitionSchemas ?? [];
@@ -477,14 +479,14 @@ class Operation {
       required this.unpackedBody,
       required this.unpackedResponse,
       this.parameters = const {}}) {
-    parameters.values.forEach((param) {
+    for (final param in parameters.values) {
       final schema = param.schema;
       if (param.type == ParameterType.body && schema is OptionalSchema) {
         // quirk: forbid optional schema as body
         print('optional body parameter in $id');
         param.schema = schema.inner;
       }
-    });
+    }
   }
   String id;
   String? description;
@@ -762,7 +764,7 @@ String generateApi(List<Operation> operations) {
   for (final op in operations) {
     ops += '\n';
     ops +=
-        '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('') + op.dartResponseComment).replaceAll('\n', '\n  \/\/\/ ')}\n';
+        '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('') + op.dartResponseComment).replaceAll('\n', '\n  /// ')}\n';
     if (op.deprecated) ops += '  @deprecated\n';
     ops +=
         '  Future<${op.dartResponse?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartPositionalParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').followedBy([
@@ -879,7 +881,9 @@ void main(List<String> arguments) async {
       in operations.expand((op) => op.definitionSchemas).toSet()) {
     if (exclude.contains(className(schema.title))) {
       final replaceSchema = ExcludedSchema(schema);
-      operations.forEach((op) => op.replaceSchema(schema, replaceSchema));
+      for (final op in operations) {
+        op.replaceSchema(schema, replaceSchema);
+      }
     }
   }
   numberConflicts(operations);
