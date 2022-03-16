@@ -13,6 +13,7 @@ exclude:
   - roomInitialSync # deprecated
   - redirectToSSO # redirect
   - redirectToIdP # redirect
+  - EventSyncUpdate
   - SyncUpdate
   - AuthenticationData
   - AuthenticationIdentifier
@@ -21,6 +22,9 @@ exclude:
   - DeviceInformation
   - MatrixEvent
   - RoomKeysRequired
+  - Chunk
+  # see https://gitlab.com/famedly/company/frontend/dart_openapi_codegen/-/issues/5
+  - PublicRoomsChunk
 voidResponse:
   - logout
   - logoutAll
@@ -62,50 +66,63 @@ voidResponse:
   - deleteRoomKeysBackup
   - uploadCrossSigningKeys
 replace:
-  - from: Event
+  - from: ClientEvent
     usedBy: getOneEvent
     to: MatrixEvent
-  - from: Event
+  - from: ClientEvent
     usedBy: getOneRoomEvent
     to: MatrixEvent
-  - from: RoomEvent
+  - from: ClientEvent
     usedBy: GetEventsResponse
     to: MatrixEvent
   - from: Event
     usedBy: Notification
     to: MatrixEvent
-  - from: RoomEvent
+  - from: ClientEvent
     usedBy: GetEventContextResponse
     to: MatrixEvent
-  - from: StateEvent
+  - from: ClientEvent
     usedBy: GetEventContextResponse
     to: MatrixEvent
-  - from: RoomEvent
+  - from: ClientEvent
     usedBy: getRoomEvents
     to: MatrixEvent
-  - from: StateEvent
+  - from: ClientStateEvent
     usedBy: getRoomEvents
     to: MatrixEvent
-  - from: TheCurrentMembershipStateOfAUserInTheRoom
+  - from: ClientEvent
     usedBy: getMembersByRoom
     to: MatrixEvent
-  - from: StateEvent
+  - from: ClientEvent
     usedBy: getRoomState
     to: MatrixEvent
-  - from: SyncStateEvent
-    usedBy: Results
-    to: MatrixEvent
-  - from: StateEvent
+  - from: ClientEvent
     usedBy: Results
     to: MatrixEvent
   - from: Event
     usedBy: Results
     to: MatrixEvent
-  - from: RoomEvent
+  - from: ClientEvent
+    usedBy: Results
+    to: MatrixEvent
+  - from: ClientEvent
     usedBy: peekEvents
     to: MatrixEvent
+  - from: Chunk
+    baseOf: MatrixEvent
+    to: MatrixEventChunk
+  # see https://gitlab.com/famedly/company/frontend/dart_openapi_codegen/-/issues/5
+  - from: Rooms
+    baseOf: Rooms
+    to: SpaceRoomsChunkBase
+  - from: Chunk
+    usedBy: QueryPublicRoomsResponse
+    to: PublicRoomsChunk
+  - from: Chunk
+    usedBy: GetPublicRoomsResponse
+    to: PublicRoomsChunk
 rename:
-  - from: Event
+  - from: ClientEvent
     baseOf: SyncRoomEvent
     to: BasicEvent
   - from: RoomInfo
@@ -163,10 +180,6 @@ rename:
     to: RoomKeysRequired
   - from: SyncResponse
     to: SyncUpdate
-  - from: GetEventsResponse
-    to: EventsSyncUpdate
-  - from: PeekEventsResponse
-    to: EventsSyncUpdate
   - from: GetEventContextResponse
     to: EventContext
   - from: Results
@@ -181,6 +194,12 @@ rename:
   - from: User
     usedBy: queryUserByID
     to: ThirdPartyUser
+  - from: ChildrenState
+    usedBy: getSpaceHierarchy
+    to: MatrixEvent
+  - from: Rooms
+    usedBy: getSpaceHierarchy
+    to: SpaceRoomsChunk
 
   # enums
   - from: SetPresence
