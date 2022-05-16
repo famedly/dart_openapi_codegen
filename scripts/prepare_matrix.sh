@@ -10,6 +10,7 @@ git apply ../scripts/put-room-keys-version.patch
 git apply ../scripts/pusher-def.patch
 git apply ../scripts/pusher-id.patch
 git apply ../scripts/pusher-data-additional-properties.patch
+git apply ../scripts/media-auth.patch
 )
 fi
 
