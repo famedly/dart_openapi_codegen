@@ -4,7 +4,7 @@ then
 git clone https://github.com/matrix-org/matrix-spec.git
 (
 cd matrix-spec
-git checkout b5cb9f736478e58baedc21852863bb5b3b44c166
+git checkout 31304300f5dc588f06a798cbda34b08b5800eb01
 git apply ../scripts/parameter-order.patch
 git apply ../scripts/put-room-keys-version.patch
 git apply ../scripts/pusher-def.patch
