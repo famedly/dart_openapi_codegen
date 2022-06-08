@@ -6,6 +6,7 @@ imports:
   - ../model/matrix_keys.dart
   - ../model/sync_update.dart
   - ../model/matrix_event.dart
+  - ../model/children_state.dart
 exclude:
   - initialSync # deprecated
   - uploadKeys # missing fallback keys
@@ -21,6 +22,7 @@ exclude:
   - MatrixDeviceKeys
   - DeviceInformation
   - MatrixEvent
+  - ChildrenState
   - RoomKeysRequired
   - Chunk
   # see https://gitlab.com/famedly/company/frontend/dart_openapi_codegen/-/issues/5
@@ -194,9 +196,6 @@ rename:
   - from: User
     usedBy: queryUserByID
     to: ThirdPartyUser
-  - from: ChildrenState
-    usedBy: getSpaceHierarchy
-    to: MatrixEvent
   - from: Rooms
     usedBy: getSpaceHierarchy
     to: SpaceRoomsChunk
