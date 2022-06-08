@@ -1,0 +1,26 @@
+diff --git a/data/api/client-server/space_hierarchy.yaml b/data/api/client-server/space_hierarchy.yaml
+index 12640b53..309b99e3 100644
+--- a/data/api/client-server/space_hierarchy.yaml
++++ b/data/api/client-server/space_hierarchy.yaml
+@@ -149,7 +149,7 @@ paths:
+                                     format: int64
+                                     description: The `origin_server_ts` for the event.
+                                 required: [origin_server_ts]
+-                      required: [room_type, children_state]
++                      required: [children_state]
+               next_batch:
+                 type: string
+                 description: |-
+diff --git a/data/api/server-server/space_hierarchy.yaml b/data/api/server-server/space_hierarchy.yaml
+index cb30fa0f..834848c9 100644
+--- a/data/api/server-server/space_hierarchy.yaml
++++ b/data/api/server-server/space_hierarchy.yaml
+@@ -158,7 +158,7 @@ paths:
+                                   format: int64
+                                   description: The `origin_server_ts` for the event.
+                               required: [origin_server_ts]
+-                    required: [room_type, allowed_room_ids, children_state]
++                    required: [children_state]
+               children:
+                 type: array
+                 description: |-
