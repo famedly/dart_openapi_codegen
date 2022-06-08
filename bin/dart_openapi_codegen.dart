@@ -593,6 +593,8 @@ class Operation {
               ? '\${Uri.encodeComponent(${dartParameters[c.substring(1, c.length - 1)]!.schema.dartToJson(c.substring(1, c.length - 1))})}'
               : c)
           .join('/') +
+      // keep trailing slashes
+      (path.endsWith('/') ? '/' : '') +
       "'";
 
   String get dartQueryMap =>
