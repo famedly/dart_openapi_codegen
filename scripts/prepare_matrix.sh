@@ -4,14 +4,13 @@ then
 git clone https://github.com/matrix-org/matrix-spec.git
 (
 cd matrix-spec
-git checkout 31304300f5dc588f06a798cbda34b08b5800eb01
+git checkout v1.6
 git apply ../scripts/parameter-order.patch
 git apply ../scripts/put-room-keys-version.patch
 git apply ../scripts/pusher-def.patch
 git apply ../scripts/pusher-id.patch
 git apply ../scripts/pusher-data-additional-properties.patch
 git apply ../scripts/media-auth.patch
-git apply ../scripts/fix-room-type-in-summary-temporary-fix.patch
 )
 fi
 

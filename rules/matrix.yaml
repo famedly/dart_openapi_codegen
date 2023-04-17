@@ -84,7 +84,16 @@ replace:
     usedBy: GetEventContextResponse
     to: MatrixEvent
   - from: ClientEvent
-    usedBy: GetEventContextResponse
+    usedBy: GetRelatingEventsResponse
+    to: MatrixEvent
+  - from: ClientEvent
+    usedBy: GetRelatingEventsWithRelTypeResponse
+    to: MatrixEvent
+  - from: ClientEvent
+    usedBy: GetRelatingEventsWithRelTypeAndEventTypeResponse
+    to: MatrixEvent
+  - from: ClientEvent
+    usedBy: GetThreadRootsResponse
     to: MatrixEvent
   - from: ClientEvent
     usedBy: getRoomEvents
