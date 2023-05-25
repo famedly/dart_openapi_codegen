@@ -48,7 +48,7 @@ abstract class Schema {
 
   Schema();
 
-  factory Schema.fromJson(Map<String, dynamic> json, String baseName,
+  factory Schema.fromJson(Map<String, Object?> json, String baseName,
       {bool required = true}) {
     if (!required) return OptionalSchema(Schema.fromJson(json, baseName));
     final type = json['type'];
@@ -85,7 +85,7 @@ abstract class Schema {
 
   Schema get nonOptional => this;
 
-  static final dynamicSchema = SingletonSchema('dynamic');
+  static final dynamicSchema = SingletonSchema('Object?');
   static final voidSchema = SingletonSchema('void',
       fromJson: (x) => 'ignore($x)', toJson: (_) => '{}');
 }
@@ -111,21 +111,32 @@ abstract class DefinitionSchema extends Schema {
     this.description,
   });
 
-  DefinitionSchema.fromJson(Map<String, dynamic> json, String baseName)
-      : title = fixTitle(json['title']) ?? baseName,
-        nameSource = fixTitle(json['title']) == null ? 'generated' : 'spec',
-        description = json['description'];
+  DefinitionSchema.fromJson(Map<String, Object?> json, String baseName)
+      : title = (json.containsKey('title') && json['title'] is String
+                ? fixTitle(json['title'] as String)
+                : null) ??
+            baseName,
+        nameSource = (json.containsKey('title') && json['title'] is String
+                    ? fixTitle(json['title'] as String)
+                    : null) ==
+                null
+            ? 'generated'
+            : 'spec',
+        description =
+            json['description'] != null ? json['description'] as String : '';
 }
 
 class ObjectParam {
   Schema schema;
   String? description;
   ObjectParam(this.schema, [this.description]);
-  ObjectParam.fromJson(Map<String, dynamic> json, String baseName,
+  ObjectParam.fromJson(Map<String, Object?> json, String baseName,
       {bool required = true})
       : schema = Schema.fromJson({...json, 'description': null}, baseName,
             required: required),
-        description = json['description'];
+        description = json.containsKey('description')
+            ? json['description'] as String
+            : '';
 }
 
 class ExcludedSchema extends Schema {
@@ -169,7 +180,8 @@ class ObjectSchema extends DefinitionSchema {
 
   List<ObjectSchema> baseClasses;
   @override
-  String dartFromJson(String input) => '$dartType.fromJson($input)';
+  String dartFromJson(String input) =>
+      '$dartType.fromJson($input as Map<String, Object?>)';
   @override
   String dartToJson(String input) => '$input.toJson()';
 
@@ -208,7 +220,7 @@ class ObjectSchema extends DefinitionSchema {
           ? '    this.additionalProperties = const {},\n'
           : '') +
       '  });\n\n' +
-      '  $dartType.fromJson(Map<String, dynamic> json) :\n' +
+      '  $dartType.fromJson(Map<String, Object?> json) :\n' +
       allProperties.entries
           .map((e) =>
               '    ${variableName(e.key)} = ${e.value.schema.dartFromJson("json['${e.key}']")}')
@@ -217,7 +229,7 @@ class ObjectSchema extends DefinitionSchema {
           '    additionalProperties = Map.fromEntries(json.entries.where((e) => ![${allProperties.keys.map((k) => "'$k'").join(', ')}].contains(e.key)).map((e) => MapEntry(e.key, ${inheritedAdditionalProperties!.dartFromJson('e.value')})))'
       ]).join(',\n') +
       ';\n'
-          '  Map<String, dynamic> toJson() $dartToJsonBody\n' +
+          '  Map<String, Object?> toJson() $dartToJsonBody\n' +
       dartAllProperties.entries
           .map((e) =>
               '${e.value.description?.replaceAll(RegExp('^|\n'), '\n  /// ') ?? ''}\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
@@ -254,25 +266,30 @@ class ObjectSchema extends DefinitionSchema {
 
   bool get inlinable => nameSource == 'generated';
 
-  ObjectSchema._fromJson(Map<String, dynamic> json, String baseName)
-      : properties = SplayTreeMap.from((json['properties'] as Map? ?? {}).map(
-            (k, v) => MapEntry(
-                k,
-                ObjectParam.fromJson(v, className(k),
-                    required: json['required']?.contains(k) ?? false)))),
+  ObjectSchema._fromJson(Map<String, Object?> json, String baseName)
+      : properties = SplayTreeMap.from(
+            (json['properties'] as Map<String, Object?>? ?? <String, Object?>{})
+                .map((k, v) => MapEntry(
+                    k,
+                    ObjectParam.fromJson(
+                        v as Map<String, Object?>, className(k),
+                        required: json['required'] != null
+                            ? (json['required'] as List<Object?>).contains(k)
+                            : false)))),
         additionalProperties = (json['additionalProperties'] != null)
             ? Schema.fromJson(
                 json['additionalProperties'] is Map
-                    ? json['additionalProperties']
-                    : {},
+                    ? json['additionalProperties'] as Map<String, Object?>
+                    : <String, Object?>{},
                 className(baseName))
             : null,
         baseClasses = (json['allOf'] as List? ?? [])
-            .map((j) => Schema.fromJson(j, baseName) as ObjectSchema)
+            .map((j) => Schema.fromJson(j as Map<String, Object?>, baseName)
+                as ObjectSchema)
             .toList(),
         super.fromJson(json, baseName);
 
-  factory ObjectSchema.fromJson(Map<String, dynamic> json, String baseName) {
+  factory ObjectSchema.fromJson(Map<String, Object?> json, String baseName) {
     final schema = ObjectSchema._fromJson(json, baseName);
     return schema.baseClasses.length == 1 && schema.properties.isEmpty
         ? schema.baseClasses.single
@@ -285,13 +302,13 @@ class MapSchema extends Schema {
   bool defaultEmpty;
 
   @override
-  String get dartType => 'Map<String, ${valueSchema?.dartType ?? 'dynamic'}>';
+  String get dartType => 'Map<String, ${valueSchema?.dartType ?? 'Object?'}>';
   @override
   String? get dartDefault => defaultEmpty ? '{}' : null;
   @override
   String dartFromJson(String input) => valueSchema != null
-      ? '($input as Map<String, dynamic>).map((k, v) => MapEntry(k, ${valueSchema!.dartFromJson('v')}))'
-      : '$input as Map<String, dynamic>';
+      ? '($input as Map<String, Object?>).map((k, v) => MapEntry(k, ${valueSchema!.dartFromJson('v')}))'
+      : '$input as Map<String, Object?>';
   @override
   String dartToJson(String input) => valueSchema != null
       ? '$input.map((k, v) => MapEntry(k, ${valueSchema!.dartToJson('v')}))'
@@ -311,9 +328,10 @@ class MapSchema extends Schema {
 
   MapSchema([this.valueSchema]) : defaultEmpty = false;
   MapSchema.defaultEmpty([this.valueSchema]) : defaultEmpty = true;
-  MapSchema.fromJson(Map<String, dynamic> json, String baseName)
+  MapSchema.fromJson(Map<String, Object?> json, String baseName)
       : valueSchema = json['additionalProperties'] != null
-            ? Schema.fromJson(json['additionalProperties'], baseName)
+            ? Schema.fromJson(
+                json['additionalProperties'] as Map<String, Object?>, baseName)
             : null,
         defaultEmpty = false;
 }
@@ -343,14 +361,16 @@ class ArraySchema extends Schema {
     }
   }
 
-  ArraySchema.fromJson(Map<String, dynamic> json, String baseName)
-      : items = Schema.fromJson(json['items'], baseName);
+  ArraySchema.fromJson(Map<String, Object?> json, String baseName)
+      : items =
+            Schema.fromJson(json['items'] as Map<String, Object?>, baseName);
 }
 
 class EnumSchema extends DefinitionSchema {
   List<String> values;
   @override
-  String dartFromJson(String input) => '$dartType.values.fromString($input)!';
+  String dartFromJson(String input) =>
+      '$dartType.values.fromString($input as String)!';
   @override
   String dartToJson(String input) => '$input.name';
   @override
@@ -362,12 +382,16 @@ class EnumSchema extends DefinitionSchema {
   @override
   List<DefinitionSchema> get definitionSchemas => [this];
 
-  EnumSchema.fromJson(Map<String, dynamic> json, String baseName)
-      : values = json['enum'].cast<String>(),
+  EnumSchema.fromJson(Map<String, Object?> json, String baseName)
+      : values = (json['enum'] as List<dynamic>)
+            .map((dynamic item) => item.toString())
+            .toList(),
         super(
             title: baseName,
             nameSource: 'generated',
-            description: json['description']);
+            description: json['description'] != null
+                ? json['description'] as String
+                : '');
 }
 
 class SingletonSchema extends Schema {
@@ -397,7 +421,8 @@ class SingletonSchema extends Schema {
   static final map = {
     'string': SingletonSchema('String', toQuery: _id),
     'string/uri': SingletonSchema('Uri',
-        fromJson: (x) => 'Uri.parse($x)', toJson: (x) => '$x.toString()'),
+        fromJson: (x) => 'Uri.parse($x as String)',
+        toJson: (x) => '$x.toString()'),
     'string/byte': SingletonSchema('Uint8List',
         fromJson: _throw, toJson: _throw, toQuery: _throw),
     'integer': SingletonSchema('int'),
@@ -407,9 +432,11 @@ class SingletonSchema extends Schema {
     'file': SingletonSchema('FileResponse', fromJson: (x) => 'ignoreFile($x)'),
   };
 
-  factory SingletonSchema.fromJson(Map<String, dynamic> json) {
-    final String? type = json['type'];
-    final String? format = json['format'];
+  factory SingletonSchema.fromJson(Map<String, Object?> json) {
+    final String? type =
+        json.containsKey('type') ? json['type'] as String : null;
+    final String? format =
+        json.containsKey('format') ? json['format'] as String : null;
     if (type == null) return Schema.dynamicSchema;
     return map['$type/$format'] ?? map[type] ?? Schema.dynamicSchema;
   }
@@ -456,15 +483,21 @@ class Parameter {
   String? description;
   Parameter(this.schema, this.type, [this.description]);
 
-  Parameter.fromJson(Map<String, dynamic> json, String baseName)
+  Parameter.fromJson(Map<String, Object?> json, String baseName)
       : schema = Schema.fromJson(
-            json['schema'] ?? {...json, 'description': null},
-            className(
-                json['in'] != 'body' ? json['name'] : baseName + 'Request'),
-            required: json['required'] ?? false),
+            json.containsKey('schema')
+                ? json['schema'] as Map<String, Object?>
+                : {...json, 'description': null},
+            className(json['in'] != 'body'
+                ? json['name'] as String
+                : baseName + 'Request'),
+            required: json.containsKey('required')
+                ? json['required'] as bool
+                : false),
         type = ParameterType.values
             .singleWhere((x) => x.toString().split('.').last == json['in']),
-        description = json['description'];
+        description =
+            json['description'] != null ? json['description'] as String : '';
 }
 
 class Operation {
@@ -624,15 +657,16 @@ class Operation {
   }
 }
 
-List<Operation> operationsFromApi(Map<String, dynamic> api) {
+List<Operation> operationsFromApi(Map<String, Object?> api) {
   final operations = <Operation>[];
-  final Map<String, dynamic> paths = api['paths'];
+  final Map<String, Object?> paths = api['paths'] as Map<String, Object?>;
   paths.forEach((path, methods) {
     final params = Map<String, Parameter>.fromEntries(
-        (methods['parameters'] as List<dynamic>? ?? []).map((parameter) =>
-            MapEntry(parameter['name'],
+        ((methods as Map<String, Object?>)['parameters'] as List<dynamic>? ??
+                [])
+            .map((parameter) => MapEntry(parameter['name'],
                 Parameter.fromJson(parameter, className(parameter['name'])))));
-    methods.cast<String, dynamic>().forEach((method, mcontent) {
+    methods.cast<String, Object?>().forEach((method, mcontent) {
       if (!{
         'get',
         'post',
@@ -643,22 +677,26 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
         'head',
         'trace',
       }.contains(method.toLowerCase())) return;
-      final operationId =
-          mcontent['operationId'] ?? '${path.split('/').last}$method';
+      final operationId = (mcontent as Map<String, Object?>)['operationId'] ??
+          '${path.split('/').last}$method';
       final localParams = mcontent['parameters'] == null
           ? <String, Parameter>{}
           : Map<String, Parameter>.fromEntries(
               (mcontent['parameters'] as List<dynamic>).map((parameter) =>
-                  MapEntry(parameter['name'],
-                      Parameter.fromJson(parameter, className(operationId)))));
+                  MapEntry(
+                      parameter['name'],
+                      Parameter.fromJson(
+                          parameter, className(operationId as String)))));
 
-      final Map<String, dynamic> responses = mcontent['responses'];
+      final Map<String, Object?> responses =
+          mcontent['responses'] as Map<String, Object?>;
       final responseSchemas = responses.map((response, rcontent) {
-        final Map<String, dynamic>? schema = rcontent['schema'];
+        final schema = (rcontent as Map<String, Object?>)['schema']
+            as Map<String, Object?>?;
         if (schema != null) {
           final ps = Schema.fromJson(
               schema,
-              className(operationId) +
+              className(operationId as String) +
                   (response == '200' ? 'Response' : className(response)));
           return MapEntry(response, ps);
         }
@@ -679,14 +717,22 @@ List<Operation> operationsFromApi(Map<String, dynamic> api) {
             ..sort((a, b) => a.value.type.index - b.value.type.index));
 
       operations.add(Operation(
-        id: operationId,
-        description: mcontent['description'],
+        id: operationId as String,
+        description: mcontent['description'] != null
+            ? mcontent['description'] as String
+            : '',
         path: path.trim(), // quirk: trim path for inviteUser
         method: method,
         response: responseSchema,
         parameters: allParams,
-        accessToken: mcontent['security']?[0]?['accessToken'] != null,
-        deprecated: mcontent['deprecated'] ?? false,
+        accessToken: (mcontent.containsKey('security')
+            ? ((mcontent['security'] as List<Object?>)[0]
+                    as Map<String, Object?>)
+                .containsKey('accessToken')
+            : false),
+        deprecated: mcontent.containsKey('deprecated')
+            ? mcontent['deprecated'] as bool
+            : false,
         unpackedBody: true,
         unpackedResponse: unpackedResponse,
       ));
@@ -846,7 +892,7 @@ void mergeDuplicates(List<Operation> operations) {
 
 void main(List<String> arguments) async {
   final outputDir = Directory(arguments[0]);
-  final Map<String, dynamic> api =
+  final Map<String, Object?> api =
       jsonDecode(await File(arguments[1]).readAsString());
   final Map rules = arguments.length > 2
       ? loadYaml(await File(arguments[2]).readAsString())
