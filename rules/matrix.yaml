@@ -232,9 +232,6 @@ rename:
   - from: Algorithm
     usedBy: getRoomKeysVersionCurrent
     to: BackupAlgorithm
-  - from: Type
-    usedBy: login
-    to: LoginType
   - from: Medium
     enum: true
     to: ThirdPartyIdentifierMedium
