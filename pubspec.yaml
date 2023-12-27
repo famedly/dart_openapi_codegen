@@ -1,7 +1,7 @@
 name: dart_openapi_codegen
 description: Generate dart client code for OpenAPI specifications
 version: 0.1.0
-repository: https://gitlab.com/famedly/dart_openapi_codegen
+repository: https://github.com/famedly/dart_openapi_codegen
 
 environment:
   sdk: '>=2.14.0 <3.0.0'
