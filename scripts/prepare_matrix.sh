@@ -14,7 +14,7 @@ git apply ../scripts/media-auth.patch
 )
 fi
 
-(cd matrix-spec && python3 ./scripts/dump-swagger.py)
+(cd matrix-spec && python3 -m venv sourcegen; source sourcegen/bin/activate; pip3 install -r scripts/requirements.txt &&  python3 ./scripts/dump-swagger.py && deactivate)
 rm -f matrix.json
 < matrix-spec/scripts/swagger/api-docs.json \
 sed 's`](/`](https://spec.matrix.org/unstable/`g' |
