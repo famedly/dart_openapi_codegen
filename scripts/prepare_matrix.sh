@@ -11,6 +11,7 @@ git apply ../scripts/pusher-def.patch
 git apply ../scripts/pusher-id.patch
 git apply ../scripts/pusher-data-additional-properties.patch
 git apply ../scripts/media-auth.patch
+git apply ../scripts/room-send-max-body-size.patch
 )
 fi
 

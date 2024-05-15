@@ -1,0 +1,10 @@
+--- a/data/api/client-server/room_send.yaml
++++ b/data/api/client-server/room_send.yaml
+@@ -39,6 +39,7 @@ paths:
+         fields in this object will vary depending on the type of event. See
+         [Room Events](/client-server-api/#room-events) for the m. event specification.
+       operationId: sendMessage
++      maxBodySize: 60000 # MAX_PDU_SIZE
+       security:
+         - accessToken: []
+       parameters:
