@@ -507,6 +507,7 @@ class Operation {
       required this.path,
       required this.method,
       required this.response,
+      this.maxBodySize,
       required this.accessToken,
       required this.deprecated,
       required this.unpackedBody,
@@ -526,6 +527,8 @@ class Operation {
   String path;
   String method;
   Schema? response;
+  int? maxBodySize;
+
   Schema? get dartResponse {
     final _response = response;
     return unpackedResponse &&
@@ -655,6 +658,14 @@ class Operation {
     return "    request.headers['content-type'] = 'application/json';\n"
         '    request.bodyBytes = utf8.encode(jsonEncode($jsonBody));\n';
   }
+
+  String get bodySizeCheck {
+    if (maxBodySize == null) return '';
+    return '    const maxBodySize = $maxBodySize;\n'
+        '    if(request.bodyBytes.length > maxBodySize) {\n'
+        '      bodySizeExceeded(maxBodySize,request.bodyBytes.length);\n'
+        '    }';
+  }
 }
 
 List<Operation> operationsFromApi(Map<String, Object?> api) {
@@ -716,6 +727,9 @@ List<Operation> operationsFromApi(Map<String, Object?> api) {
           {...params, ...localParams}.entries.toList()
             ..sort((a, b) => a.value.type.index - b.value.type.index));
 
+      // HACK: `maxBodySize` is not a valid property in swagger but we add it in a patch. Helps throw an Exception when the body size goes beyond this value after JSON & UTF8 encoding.
+      final maxBodySize = mcontent['maxBodySize'] as int?;
+
       operations.add(Operation(
         id: operationId as String,
         description: mcontent['description'] != null
@@ -725,6 +739,7 @@ List<Operation> operationsFromApi(Map<String, Object?> api) {
         method: method,
         response: responseSchema,
         parameters: allParams,
+        maxBodySize: maxBodySize,
         accessToken: (mcontent.containsKey('security')
             ? ((mcontent['security'] as List<Object?>)[0]
                     as Map<String, Object?>)
@@ -808,7 +823,8 @@ String generateApi(List<Operation> operations) {
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
       "import 'package:http/http.dart';\nimport 'dart:convert';\nimport 'dart:typed_data';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n"
-      "  Never unexpectedResponse(BaseResponse response, Uint8List body) { throw Exception('http error response'); }\n";
+      "  Never unexpectedResponse(BaseResponse response, Uint8List body) { throw Exception('http error response'); }\n"
+      "  Never bodySizeExceeded(int expected, int actual) { throw Exception('body size \$actual exceeded \$expected'); }\n";
   for (final op in operations) {
     ops += '\n';
     ops +=
@@ -840,6 +856,7 @@ String generateApi(List<Operation> operations) {
           "    ${e.value.schema.dartCondition(variableName(e.key))}request.headers['${e.key.toLowerCase()}'] = ${e.value.schema.dartToQuery(variableName(e.key))};\n";
     }
     ops += op.dartSetBody;
+    ops += op.bodySizeCheck;
     ops += '    final response = await httpClient.send(request);\n';
     ops += '    final responseBody = await response.stream.toBytes();\n';
     ops +=
