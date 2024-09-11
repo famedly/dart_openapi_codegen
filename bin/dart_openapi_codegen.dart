@@ -911,15 +911,6 @@ String generateApi(List<Operation> operations) {
     print(op.dartResponse.runtimeType);
     print(op.dartResponse?.dartType.toString());
 
-    if (op.accessTokenOptional) {
-      op.parameters.addAll({
-        'sendToken': Parameter(
-          OptionalSchema(SingletonSchema('bool')),
-          ParameterType.field,
-        ),
-      });
-    }
-
     ops += '\n';
     ops +=
         '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('') + op.dartResponseComment).replaceAll('\n', '\n  /// ')}\n';
@@ -943,7 +934,7 @@ String generateApi(List<Operation> operations) {
         "    final request = Request('${op.method.toUpperCase()}', baseUri!.resolveUri(requestUri));\n";
     if (op.accessToken) {
       if (op.accessTokenOptional) {
-        ops += 'if(sendToken ?? false)';
+        ops += 'if(bearerToken != null)';
       }
       ops +=
           "    request.headers['authorization'] = 'Bearer \${bearerToken!}';\n";
