@@ -1,7 +1,7 @@
+# move some stuff to own def
 --- a/data/api/client-server/definitions/pusher.yaml
 +++ b/data/api/client-server/definitions/pusher.yaml
-@@ -14,23 +14,14 @@
- # limitations under the License.
+@@ -1,22 +1,13 @@
  type: object
  title: Pusher
 +allOf:
@@ -26,7 +26,7 @@
    app_display_name:
      type: string
      description: |-
-@@ -70,8 +61,6 @@ properties:
+@@ -56,8 +47,6 @@ properties:
            The format to use when sending notifications to the Push
            Gateway.
  required:
@@ -37,21 +37,7 @@
    - device_display_name
 --- /dev/null
 +++ b/data/api/client-server/definitions/pusher_id.yaml
-@@ -0,0 +1,31 @@
-+# Copyright 2016 OpenMarket Ltd
-+# Copyright 2018 New Vector Ltd
-+#
-+# Licensed under the Apache License, Version 2.0 (the "License");
-+# you may not use this file except in compliance with the License.
-+# You may obtain a copy of the License at
-+#
-+#     http://www.apache.org/licenses/LICENSE-2.0
-+#
-+# Unless required by applicable law or agreed to in writing, software
-+# distributed under the License is distributed on an "AS IS" BASIS,
-+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+# See the License for the specific language governing permissions and
-+# limitations under the License.
+@@ -0,0 +1,17 @@
 +type: object
 +title: PusherId
 +properties:
@@ -69,3 +55,4 @@
 +required:
 +  - pushkey
 +  - app_id
+\ No newline at end of file

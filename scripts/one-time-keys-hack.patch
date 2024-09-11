@@ -1,0 +1,32 @@
+# just use object here for simplicity
+diff --git a/data/api/client-server/keys.yaml b/data/api/client-server/keys.yaml
+index 001fe1f5..9446e066 100644
+--- a/data/api/client-server/keys.yaml
++++ b/data/api/client-server/keys.yaml
+@@ -39,8 +39,6 @@ paths:
+                   allOf:
+                     - $ref: definitions/device_keys.yaml
+                 one_time_keys:
+-                  allOf:
+-                    - $ref: "definitions/one_time_keys.yaml"
+                   type: object
+                   description: |-
+                     One-time public keys for "pre-key" messages.  The names of
+@@ -62,8 +60,6 @@ paths:
+                           ed25519:JLAFKJWSCS: IQeCEPb9HFk217cU9kw9EOiusC6kMIkoIRnbnfOh5Oc63S1ghgyjShBGpu34blQomoalCyXWyhaaT3MrLZYQAA
+                 fallback_keys:
+                   x-addedInMatrixVersion: "1.2"
+-                  allOf:
+-                    - $ref: "definitions/one_time_keys.yaml"
+                   type: object
+                   description: |-
+                     The public key which should be used if the device's one-time keys
+@@ -362,7 +358,7 @@ paths:
+                         x-pattern-format: mx-user-id
+                         type: object
+                         additionalProperties:
+-                          $ref: "definitions/one_time_keys.yaml"
++                          type: object
+                     example:
+                       "@alice:example.com":
+                         JLAFKJWSCS:
