@@ -9,7 +9,6 @@ imports:
   - ../model/children_state.dart
 exclude:
   - initialSync # deprecated
-  - uploadKeys # missing fallback keys
   - postPusher # need to add append
   - roomInitialSync # deprecated
   - redirectToSSO # redirect
@@ -27,6 +26,9 @@ exclude:
   - Chunk
   # see https://gitlab.com/famedly/company/frontend/dart_openapi_codegen/-/issues/5
   - PublicRoomsChunk
+  - getContent
+  - getContentOverrideName
+  - getContentThumbnail
 voidResponse:
   - logout
   - logoutAll
@@ -133,6 +135,8 @@ replace:
     usedBy: GetPublicRoomsResponse
     to: PublicRoomsChunk
 rename:
+  - from: ClientEventWithoutRoomID
+    to: MatrixEvent
   - from: ClientEvent
     baseOf: SyncRoomEvent
     to: BasicEvent
@@ -232,9 +236,6 @@ rename:
   - from: Algorithm
     usedBy: getRoomKeysVersionCurrent
     to: BackupAlgorithm
-  - from: Type
-    usedBy: login
-    to: LoginType
   - from: Medium
     enum: true
     to: ThirdPartyIdentifierMedium
