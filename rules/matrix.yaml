@@ -135,6 +135,11 @@ replace:
     usedBy: GetPublicRoomsResponse
     to: PublicRoomsChunk
 rename:
+  - from: GetConfigAuthedResponse
+    usedBy: getConfigAuthed
+    to: MediaConfig
+  - from: GetUrlPreviewAuthedResponse
+    to: MediaPreviewUrl
   - from: ClientEventWithoutRoomID
     to: MatrixEvent
   - from: ClientEvent
