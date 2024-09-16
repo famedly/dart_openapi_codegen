@@ -31,6 +31,9 @@ git apply ../scripts/relations.patch
 
 echo "Applying one time keys hack"
 git apply ../scripts/one-time-keys-hack.patch
+
+echo "Applying third party missing types patch"
+git apply ../scripts/third-party-missing-type.patch
 )
 fi
 

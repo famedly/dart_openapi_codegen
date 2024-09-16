@@ -329,9 +329,6 @@ class MapSchema extends Schema {
       valueSchema?.definitionSchemas ?? [];
 
   @override
-  String dartToQuery(String input) => 'utf8.encode(jsonEncode($input))';
-
-  @override
   void replaceSchema(Schema from, Schema to) {
     if (valueSchema == from) {
       valueSchema = to;
@@ -507,13 +504,19 @@ class OptionalSchema extends Schema {
   Schema get nonOptional => inner;
 }
 
-enum ParameterType { path, query, body, header, field }
+enum ParameterType { path, query, body, header }
 
 class Parameter {
   Schema schema;
   ParameterType type;
   String? description;
-  Parameter(this.schema, this.type, [this.description]);
+  bool explode;
+  Parameter(
+    this.schema,
+    this.type, [
+    this.description,
+    this.explode = false,
+  ]);
 
   Parameter.fromJson(Map<String, Object?> json, String baseName)
       : schema = Schema.fromJson(
@@ -529,7 +532,17 @@ class Parameter {
         type = ParameterType.values
             .singleWhere((x) => x.toString().split('.').last == json['in']),
         description =
-            json['description'] != null ? json['description'] as String : '';
+            json['description'] != null ? json['description'] as String : '',
+        // https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#fixed-fields-10
+        explode = bool.tryParse(json['explode'].toString()) ??
+            (json.containsKey('schema') &&
+                ParameterType.values.singleWhere(
+                        (x) => x.toString().split('.').last == json['in']) ==
+                    ParameterType.query &&
+                {
+                  'object',
+                  'array'
+                }.contains((json['schema'] as Map<String, dynamic>)['type']));
 }
 
 class Operation {
@@ -604,8 +617,6 @@ class Operation {
       parameters.entries.where((e) => e.value.type == ParameterType.query));
   Map<String, Parameter> get headerParameters => Map.fromEntries(
       parameters.entries.where((e) => e.value.type == ParameterType.header));
-  Map<String, Parameter> get fields => Map.fromEntries(
-      parameters.entries.where((e) => e.value.type == ParameterType.field));
   Map<String, Parameter> get dartParameters => unpackedBody
       ? Map.fromEntries(parameters.entries.expand((e) {
           final s = e.value.schema;
@@ -615,7 +626,10 @@ class Operation {
             return s.dartAllProperties.entries.map((e) => MapEntry(
                 e.key,
                 Parameter(
-                    e.value.schema, ParameterType.body, e.value.description)));
+                  e.value.schema,
+                  ParameterType.body,
+                  e.value.description,
+                )));
           }
           return [e];
         }))
@@ -668,14 +682,31 @@ class Operation {
       (path.endsWith('/') ? '/' : '') +
       "'";
 
-  String get dartQueryMap =>
-      '{\n' +
-      parameters.entries
-          .where((e) => e.value.type == ParameterType.query)
-          .map((e) =>
-              '      ${e.value.schema.dartToQueryEntry(e.key, variableName(e.key))},\n')
-          .join('') +
-      '    }';
+  String get dartQueryMap {
+    final buffer = StringBuffer('{\n');
+
+    for (final entry in parameters.entries) {
+      if (entry.value.type == ParameterType.query) {
+        switch (entry.value.explode) {
+          case true when entry.value.schema.dartType.startsWith('List'):
+            buffer.write(
+                '${entry.value.schema.dartCondition(variableName(entry.key))} "${entry.key}": ${variableName(entry.key)},\n');
+            break;
+          case true:
+            buffer.write(
+                '${entry.value.schema.dartCondition(variableName(entry.key))} ...${variableName(entry.key)},\n');
+            break;
+          case false:
+            buffer.write(
+                '${entry.value.schema.dartToQueryEntry(entry.key, variableName(entry.key))},\n');
+            break;
+        }
+      }
+    }
+
+    buffer.write('}');
+    return buffer.toString();
+  }
 
   String get dartSetBody {
     final bodyParams =
