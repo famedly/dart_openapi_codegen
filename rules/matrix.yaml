@@ -26,9 +26,6 @@ exclude:
   - Chunk
   # see https://gitlab.com/famedly/company/frontend/dart_openapi_codegen/-/issues/5
   - PublicRoomsChunk
-  - getContent
-  - getContentOverrideName
-  - getContentThumbnail
 voidResponse:
   - logout
   - logoutAll
@@ -135,11 +132,14 @@ replace:
     usedBy: GetPublicRoomsResponse
     to: PublicRoomsChunk
 rename:
-  - from: GetConfigAuthedResponse
-    usedBy: getConfigAuthed
+  - from: GetConfigResponse
     to: MediaConfig
+  - from: GetConfigAuthedResponse
+    to: MediaConfig
+  - from: GetUrlPreviewResponse
+    to: PreviewForUrl
   - from: GetUrlPreviewAuthedResponse
-    to: MediaPreviewUrl
+    to: PreviewForUrl
   - from: ClientEventWithoutRoomID
     to: MatrixEvent
   - from: ClientEvent
@@ -166,8 +166,6 @@ rename:
   - from: Timeline
     base: EventFilter
     to: StateFilter
-  - from: GetConfigResponse
-    to: ServerConfig
   - from: GetTurnServerResponse
     to: TurnServerCredentials
   - from: RequestOpenIdTokenResponse

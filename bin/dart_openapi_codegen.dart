@@ -930,7 +930,9 @@ String generateModel(List<Operation> operations) {
 }
 
 String generateApi(List<Operation> operations) {
-  var ops =
+  var ops = '// ignore_for_file: provide_deprecation_message\n\n';
+
+  ops +=
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
       "import 'package:http/http.dart';\nimport 'dart:convert';\nimport 'dart:typed_data';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n"
@@ -945,7 +947,7 @@ String generateApi(List<Operation> operations) {
     ops += '\n';
     ops +=
         '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('') + op.dartResponseComment).replaceAll('\n', '\n  /// ')}\n';
-    if (op.deprecated) ops += '  @Deprecated(\'message\')\n';
+    if (op.deprecated) ops += '  @deprecated\n';
     ops +=
         '  Future<${op.dartResponse?.dartType ?? 'void'}> ${variableName(op.id)}(${op.dartPositionalParameters.entries.map((e) => '${e.value.schema.dartType} ${variableName(e.key)}').followedBy([
           if (op.dartNamedParameters.isNotEmpty)
