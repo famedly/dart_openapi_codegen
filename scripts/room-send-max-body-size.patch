@@ -1,10 +1,12 @@
+diff --git a/data/api/client-server/room_send.yaml b/data/api/client-server/room_send.yaml
+index 25d8a75b..530c4105 100644
 --- a/data/api/client-server/room_send.yaml
 +++ b/data/api/client-server/room_send.yaml
-@@ -39,6 +39,7 @@ paths:
+@@ -29,6 +29,7 @@ paths:
          fields in this object will vary depending on the type of event. See
          [Room Events](/client-server-api/#room-events) for the m. event specification.
        operationId: sendMessage
 +      maxBodySize: 60000 # MAX_PDU_SIZE
        security:
-         - accessToken: []
-       parameters:
+         - accessTokenQuery: []
+         - accessTokenBearer: []

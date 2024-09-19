@@ -1,0 +1,23 @@
+# Explicitly allow additional properties in there
+# In theory OpenAPI 3.0 defaults to `additionalProperties: true`, but that makes the generated types ugly. This patch explicitly enables additional properties for the types we use them on.
+--- a/data/api/client-server/definitions/pusher.yaml
++++ b/data/api/client-server/definitions/pusher.yaml
+@@ -48,6 +48,7 @@ properties:
+       A dictionary of information for the pusher implementation
+       itself.
+     title: PusherData
++    additionalProperties: true
+     properties:
+       url:
+         type: string
+diff --git a/data/api/client-server/definitions/tag.yaml b/data/api/client-server/definitions/tag.yaml
+--- a/data/api/client-server/definitions/tag.yaml
++++ b/data/api/client-server/definitions/tag.yaml
+@@ -14,6 +14,7 @@
+ 
+ title: Tag
+ type: object
++additionalProperties: true
+ properties:
+   order:
+     type: number

@@ -1,0 +1,15 @@
+# uploaded content is of type bytes
+diff --git a/data/api/client-server/content-repo.yaml b/data/api/client-server/content-repo.yaml
+index 92ca6caa..b4aaeb4b 100644
+--- a/data/api/client-server/content-repo.yaml
++++ b/data/api/client-server/content-repo.yaml
+@@ -718,6 +718,9 @@ components:
+           schema:
+             description: The content to be uploaded.
+             example: <bytes>
++            format: byte
++            type: string
++            required: true
+       required: true
+   responses:
+     uploadTooLarge:

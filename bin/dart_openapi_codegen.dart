@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:yaml/yaml.dart';
 
 import 'dart:convert';
@@ -62,6 +63,7 @@ abstract class Schema {
     } else if (type == 'object' || json['allOf'] != null) {
       if (json['properties'] == null &&
           json['additionalProperties'] == null &&
+          json['patternProperties'] == null &&
           json['allOf'] == null) {
         return MapSchema();
       }
@@ -158,7 +160,6 @@ class ObjectSchema extends DefinitionSchema {
       Map.fromEntries(baseClasses.expand((c) => c.allProperties.entries));
   Map<String, ObjectParam> get allProperties {
     if (properties.keys.any((k) => inheritedProperties.keys.contains(k))) {
-      print('invalid base class: ${className(title)}');
       baseClasses.clear();
     }
     return inheritedProperties..addAll(properties);
@@ -276,13 +277,23 @@ class ObjectSchema extends DefinitionSchema {
                         required: json['required'] != null
                             ? (json['required'] as List<Object?>).contains(k)
                             : false)))),
+        // yes ik what if both additionalProperties and patternProperties popup
+        // at the same time? guess what, you have to fix it now!
         additionalProperties = (json['additionalProperties'] != null)
             ? Schema.fromJson(
                 json['additionalProperties'] is Map
                     ? json['additionalProperties'] as Map<String, Object?>
                     : <String, Object?>{},
                 className(baseName))
-            : null,
+            : (json['patternProperties'] != null)
+                ? Schema.fromJson(
+                    json['patternProperties'] is Map
+                        ? ((json['patternProperties'] as Map<String, Object?>)
+                            .values
+                            .firstOrNull as Map<String, Object?>)
+                        : <String, Object?>{},
+                    className(baseName))
+                : null,
         baseClasses = (json['allOf'] as List? ?? [])
             .map((j) => Schema.fromJson(j as Map<String, Object?>, baseName)
                 as ObjectSchema)
@@ -329,10 +340,18 @@ class MapSchema extends Schema {
   MapSchema([this.valueSchema]) : defaultEmpty = false;
   MapSchema.defaultEmpty([this.valueSchema]) : defaultEmpty = true;
   MapSchema.fromJson(Map<String, Object?> json, String baseName)
+      // yes ik what if both additionalProperties and patternProperties popup
+      // at the same time? guess what, you have to fix it now!
       : valueSchema = json['additionalProperties'] != null
             ? Schema.fromJson(
                 json['additionalProperties'] as Map<String, Object?>, baseName)
-            : null,
+            : json['patternProperties'] != null
+                ? Schema.fromJson(
+                    (json['patternProperties'] as Map<String, Object?>)
+                        .values
+                        .firstOrNull as Map<String, Object?>,
+                    baseName)
+                : null,
         defaultEmpty = false;
 }
 
@@ -401,8 +420,12 @@ class SingletonSchema extends Schema {
     throw Exception('invalid conversion');
   }
 
-  SingletonSchema(this.dartType,
-      {this.fromJson, this.toJson = _id, this.toQuery = _toString});
+  SingletonSchema(
+    this.dartType, {
+    this.fromJson,
+    this.toJson = _id,
+    this.toQuery = _toString,
+  });
 
   @override
   final String dartType;
@@ -422,6 +445,10 @@ class SingletonSchema extends Schema {
     'string': SingletonSchema('String', toQuery: _id),
     'string/uri': SingletonSchema('Uri',
         fromJson: (x) => 'Uri.parse($x as String)',
+        toJson: (x) => '$x.toString()'),
+    'string/mx-mxc-uri': SingletonSchema('Uri',
+        fromJson: (x) =>
+            '(($x as String).startsWith("mxc://") ? Uri.parse($x as String) : throw Exception("Uri not an mxc URI"))',
         toJson: (x) => '$x.toString()'),
     'string/byte': SingletonSchema('Uint8List',
         fromJson: _throw, toJson: _throw, toQuery: _throw),
@@ -444,7 +471,8 @@ class SingletonSchema extends Schema {
 
 class OptionalSchema extends Schema {
   @override
-  String get dartType => '${inner.dartType}?';
+  String get dartType =>
+      inner.dartType.endsWith('?') ? inner.dartType : '${inner.dartType}?';
   @override
   String dartCondition(String input) => 'if ($input != null) ';
   @override
@@ -460,6 +488,7 @@ class OptionalSchema extends Schema {
   bool get dartNeedFinal => true;
   Schema inner;
   OptionalSchema._(this.inner);
+
   factory OptionalSchema(Schema schema) =>
       schema is OptionalSchema ? schema : OptionalSchema._(schema);
   @override
@@ -481,7 +510,13 @@ class Parameter {
   Schema schema;
   ParameterType type;
   String? description;
-  Parameter(this.schema, this.type, [this.description]);
+  bool explode;
+  Parameter(
+    this.schema,
+    this.type, [
+    this.description,
+    this.explode = false,
+  ]);
 
   Parameter.fromJson(Map<String, Object?> json, String baseName)
       : schema = Schema.fromJson(
@@ -497,7 +532,17 @@ class Parameter {
         type = ParameterType.values
             .singleWhere((x) => x.toString().split('.').last == json['in']),
         description =
-            json['description'] != null ? json['description'] as String : '';
+            json['description'] != null ? json['description'] as String : '',
+        // https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.3.md#fixed-fields-10
+        explode = bool.tryParse(json['explode'].toString()) ??
+            (json.containsKey('schema') &&
+                ParameterType.values.singleWhere(
+                        (x) => x.toString().split('.').last == json['in']) ==
+                    ParameterType.query &&
+                {
+                  'object',
+                  'array'
+                }.contains((json['schema'] as Map<String, dynamic>)['type']));
 }
 
 class Operation {
@@ -509,6 +554,7 @@ class Operation {
       required this.response,
       this.maxBodySize,
       required this.accessToken,
+      this.accessTokenOptional = false,
       required this.deprecated,
       required this.unpackedBody,
       required this.unpackedResponse,
@@ -517,7 +563,6 @@ class Operation {
       final schema = param.schema;
       if (param.type == ParameterType.body && schema is OptionalSchema) {
         // quirk: forbid optional schema as body
-        print('optional body parameter in $id');
         param.schema = schema.inner;
       }
     }
@@ -563,6 +608,7 @@ class Operation {
   }
 
   bool accessToken;
+  bool accessTokenOptional;
   bool deprecated;
   bool unpackedBody;
   bool unpackedResponse;
@@ -580,7 +626,10 @@ class Operation {
             return s.dartAllProperties.entries.map((e) => MapEntry(
                 e.key,
                 Parameter(
-                    e.value.schema, ParameterType.body, e.value.description)));
+                  e.value.schema,
+                  ParameterType.body,
+                  e.value.description,
+                )));
           }
           return [e];
         }))
@@ -633,14 +682,31 @@ class Operation {
       (path.endsWith('/') ? '/' : '') +
       "'";
 
-  String get dartQueryMap =>
-      '{\n' +
-      parameters.entries
-          .where((e) => e.value.type == ParameterType.query)
-          .map((e) =>
-              '      ${e.value.schema.dartToQueryEntry(e.key, variableName(e.key))},\n')
-          .join('') +
-      '    }';
+  String get dartQueryMap {
+    final buffer = StringBuffer('{\n');
+
+    for (final entry in parameters.entries) {
+      if (entry.value.type == ParameterType.query) {
+        switch (entry.value.explode) {
+          case true when entry.value.schema.dartType.startsWith('List'):
+            buffer.write(
+                '${entry.value.schema.dartCondition(variableName(entry.key))} "${entry.key}": ${variableName(entry.key)},\n');
+            break;
+          case true:
+            buffer.write(
+                '${entry.value.schema.dartCondition(variableName(entry.key))} ...${variableName(entry.key)},\n');
+            break;
+          case false:
+            buffer.write(
+                '${entry.value.schema.dartToQueryEntry(entry.key, variableName(entry.key))},\n');
+            break;
+        }
+      }
+    }
+
+    buffer.write('}');
+    return buffer.toString();
+  }
 
   String get dartSetBody {
     final bodyParams =
@@ -672,11 +738,14 @@ List<Operation> operationsFromApi(Map<String, Object?> api) {
   final operations = <Operation>[];
   final Map<String, Object?> paths = api['paths'] as Map<String, Object?>;
   paths.forEach((path, methods) {
+    print('--------------------------------------------');
+    print('working on path $path');
     final params = Map<String, Parameter>.fromEntries(
         ((methods as Map<String, Object?>)['parameters'] as List<dynamic>? ??
                 [])
             .map((parameter) => MapEntry(parameter['name'],
                 Parameter.fromJson(parameter, className(parameter['name'])))));
+
     methods.cast<String, Object?>().forEach((method, mcontent) {
       if (!{
         'get',
@@ -690,6 +759,9 @@ List<Operation> operationsFromApi(Map<String, Object?> api) {
       }.contains(method.toLowerCase())) return;
       final operationId = (mcontent as Map<String, Object?>)['operationId'] ??
           '${path.split('/').last}$method';
+
+      print(
+          'working on oid: ${operationId.toString()} method: $method, content: $mcontent');
       final localParams = mcontent['parameters'] == null
           ? <String, Parameter>{}
           : Map<String, Parameter>.fromEntries(
@@ -699,20 +771,54 @@ List<Operation> operationsFromApi(Map<String, Object?> api) {
                       Parameter.fromJson(
                           parameter, className(operationId as String)))));
 
-      final Map<String, Object?> responses =
-          mcontent['responses'] as Map<String, Object?>;
+      final requestBodyParams = mcontent['requestBody'] == null
+          ? <String, Parameter>{}
+          : Map<String, Parameter>.fromEntries({
+              MapEntry<String, Parameter>(
+                (mcontent['requestBody'] as Map)['name'] ?? 'body',
+                Parameter.fromJson(
+                  {
+                    'in': 'body',
+                    'name': (mcontent['requestBody'] as Map)['name'] ?? 'body',
+                    'description':
+                        (mcontent['requestBody'] as Map)['description'],
+                    'required': (mcontent['requestBody'] as Map)['required'],
+                    'schema':
+                        ((mcontent['requestBody'] as Map)['content'] as Map)
+                                .values
+                                .single?['schema'] ??
+                            <String, Object?>{},
+                  },
+                  className(operationId as String),
+                ),
+              ),
+            });
+
+      final responses = mcontent['responses'] as Map<String, Object?>;
+      // 200: example
+      // 200: desc
+      // 200: schema
       final responseSchemas = responses.map((response, rcontent) {
-        final schema = (rcontent as Map<String, Object?>)['schema']
-            as Map<String, Object?>?;
-        if (schema != null) {
-          final ps = Schema.fromJson(
-              schema,
-              className(operationId as String) +
-                  (response == '200' ? 'Response' : className(response)));
-          return MapEntry(response, ps);
+        final content = (rcontent as Map<String, Object?>)['content'];
+        if (content == null) return MapEntry(response, null);
+        for (final responseType in (content as Map<String, Object?>).values) {
+          if (responseType == null) return MapEntry(response, null);
+          final schema = rcontent['schema'] as Map<String, Object?>? ??
+              (responseType as Map<String, Object?>)['schema']
+                  as Map<String, Object?>?;
+          if (schema != null) {
+            final ps = Schema.fromJson(
+                schema,
+                className(operationId as String) +
+                    (response == '200' ? 'Response' : className(response)));
+            return MapEntry(response, ps);
+          }
+          return MapEntry(response, null);
         }
         return MapEntry(response, null);
       });
+
+      // final contentSchemas = responses.map((response, rcontent) {});
 
       final responseSchema = responseSchemas['200'];
       var unpackedResponse = false;
@@ -724,10 +830,10 @@ List<Operation> operationsFromApi(Map<String, Object?> api) {
       }
 
       final allParams = Map.fromEntries(
-          {...params, ...localParams}.entries.toList()
+          {...params, ...requestBodyParams, ...localParams}.entries.toList()
             ..sort((a, b) => a.value.type.index - b.value.type.index));
 
-      // HACK: `maxBodySize` is not a valid property in swagger but we add it in a patch. Helps throw an Exception when the body size goes beyond this value after JSON & UTF8 encoding.
+      // HACK: `maxBodySize` is not a valid property in openapi but we add it in a patch. Helps throw an Exception when the body size goes beyond this value after JSON & UTF8 encoding.
       final maxBodySize = mcontent['maxBodySize'] as int?;
 
       operations.add(Operation(
@@ -741,9 +847,14 @@ List<Operation> operationsFromApi(Map<String, Object?> api) {
         parameters: allParams,
         maxBodySize: maxBodySize,
         accessToken: (mcontent.containsKey('security')
-            ? ((mcontent['security'] as List<Object?>)[0]
-                    as Map<String, Object?>)
-                .containsKey('accessToken')
+            ? (mcontent['security'] as List<Object?>).isNotEmpty
+            : false),
+        accessTokenOptional: (mcontent.containsKey('security')
+            ? (mcontent['security'] as List<Object?>).isNotEmpty &&
+                (mcontent['security'] as List<Object?>).singleWhereOrNull(
+                      (element) => element.toString() == '{}',
+                    ) !=
+                    null
             : false),
         deprecated: mcontent.containsKey('deprecated')
             ? mcontent['deprecated'] as bool
@@ -819,13 +930,20 @@ String generateModel(List<Operation> operations) {
 }
 
 String generateApi(List<Operation> operations) {
-  var ops =
+  var ops = '// ignore_for_file: provide_deprecation_message\n\n';
+
+  ops +=
       "import 'model.dart';\nimport 'fixed_model.dart';\nimport 'internal.dart';\n\n";
   ops +=
       "import 'package:http/http.dart';\nimport 'dart:convert';\nimport 'dart:typed_data';\n\nclass Api {\n  Client httpClient;\n  Uri? baseUri;\n  String? bearerToken;\n  Api({Client? httpClient, this.baseUri, this.bearerToken})\n    : httpClient = httpClient ?? Client();\n"
       "  Never unexpectedResponse(BaseResponse response, Uint8List body) { throw Exception('http error response'); }\n"
       "  Never bodySizeExceeded(int expected, int actual) { throw Exception('body size \$actual exceeded \$expected'); }\n";
   for (final op in operations) {
+    print('--------------------------------------------');
+    print(op.path);
+    print(op.dartResponse.runtimeType);
+    print(op.dartResponse?.dartType.toString());
+
     ops += '\n';
     ops +=
         '  /// ${((op.description ?? op.id) + op.dartParameters.entries.where((e) => e.value.description != null).map((e) => '\n\n[${variableName(e.key)}] ${e.value.description}').join('') + op.dartResponseComment).replaceAll('\n', '\n  /// ')}\n';
@@ -848,6 +966,9 @@ String generateApi(List<Operation> operations) {
     ops +=
         "    final request = Request('${op.method.toUpperCase()}', baseUri!.resolveUri(requestUri));\n";
     if (op.accessToken) {
+      if (op.accessTokenOptional) {
+        ops += 'if(bearerToken != null)';
+      }
       ops +=
           "    request.headers['authorization'] = 'Bearer \${bearerToken!}';\n";
     }

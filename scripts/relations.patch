@@ -1,0 +1,104 @@
+# you can't really have allOf and chunk at the same time, so we just manually copy the ref over
+--- a/data/api/client-server/relations.yaml
++++ b/data/api/client-server/relations.yaml
+@@ -53,14 +53,32 @@ paths:
+             application/json:
+               schema:
+                 allOf:
+-                  - $ref: '#/components/schemas/response'
+                   - type: object
+                     properties:
++                      next_batch:
++                        type: string
++                        description: |-
++                          An opaque string representing a pagination token. The absence of this token
++                          means there are no more results to fetch and the client should stop paginating.
++                      prev_batch:
++                        type: string
++                        description: |-
++                          An opaque string representing a pagination token. The absence of this token
++                          means this is the start of the result set, i.e. this is the first batch/page.
++                      recursion_depth:
++                        type: integer
++                        description: |-
++                          If the `recurse` parameter was supplied by the client, this response field is
++                          mandatory and gives the actual depth to which the server recursed. If the client
++                          did not specify the `recurse` parameter, this field must be absent.
+                       chunk:
++                        type: object
+                         title: ChildEventsChunk
+                         type: array
+-                        description: The child events of the requested event, ordered topologically
+-                          most-recent first.
++                        description: |-
++                          The child events of the requested event, ordered topologically most-recent
++                          first. The events returned will match the `relType` and `eventType` supplied
++                          in the URL.
+                         items:
+                           $ref: definitions/client_event.yaml
+                     required:
+@@ -112,16 +130,32 @@ paths:
+             application/json:
+               schema:
+                 allOf:
+-                  - $ref: '#/components/schemas/response'
+                   - type: object
+                     properties:
++                      next_batch:
++                        type: string
++                        description: |-
++                          An opaque string representing a pagination token. The absence of this token
++                          means there are no more results to fetch and the client should stop paginating.
++                      prev_batch:
++                        type: string
++                        description: |-
++                          An opaque string representing a pagination token. The absence of this token
++                          means this is the start of the result set, i.e. this is the first batch/page.
++                      recursion_depth:
++                        type: integer
++                        description: |-
++                          If the `recurse` parameter was supplied by the client, this response field is
++                          mandatory and gives the actual depth to which the server recursed. If the client
++                          did not specify the `recurse` parameter, this field must be absent.
+                       chunk:
++                        type: object
+                         title: ChildEventsChunk
+                         type: array
+                         description: |-
+-                          The child events of the requested event, ordered topologically
+-                          most-recent first. The events returned will match the `relType`
+-                          supplied in the URL.
++                          The child events of the requested event, ordered topologically most-recent
++                          first. The events returned will match the `relType` and `eventType` supplied
++                          in the URL.
+                         items:
+                           $ref: definitions/client_event.yaml
+                     required:
+@@ -185,10 +219,26 @@ paths:
+             application/json:
+               schema:
+                 allOf:
+-                  - $ref: '#/components/schemas/response'
+                   - type: object
+                     properties:
++                      next_batch:
++                        type: string
++                        description: |-
++                          An opaque string representing a pagination token. The absence of this token
++                          means there are no more results to fetch and the client should stop paginating.
++                      prev_batch:
++                        type: string
++                        description: |-
++                          An opaque string representing a pagination token. The absence of this token
++                          means this is the start of the result set, i.e. this is the first batch/page.
++                      recursion_depth:
++                        type: integer
++                        description: |-
++                          If the `recurse` parameter was supplied by the client, this response field is
++                          mandatory and gives the actual depth to which the server recursed. If the client
++                          did not specify the `recurse` parameter, this field must be absent.
+                       chunk:
++                        type: object
+                         title: ChildEventsChunk
+                         type: array
+                         description: |-

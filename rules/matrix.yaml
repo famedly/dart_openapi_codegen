@@ -9,7 +9,6 @@ imports:
   - ../model/children_state.dart
 exclude:
   - initialSync # deprecated
-  - uploadKeys # missing fallback keys
   - postPusher # need to add append
   - roomInitialSync # deprecated
   - redirectToSSO # redirect
@@ -133,6 +132,16 @@ replace:
     usedBy: GetPublicRoomsResponse
     to: PublicRoomsChunk
 rename:
+  - from: GetConfigResponse
+    to: MediaConfig
+  - from: GetConfigAuthedResponse
+    to: MediaConfig
+  - from: GetUrlPreviewResponse
+    to: PreviewForUrl
+  - from: GetUrlPreviewAuthedResponse
+    to: PreviewForUrl
+  - from: ClientEventWithoutRoomID
+    to: MatrixEvent
   - from: ClientEvent
     baseOf: SyncRoomEvent
     to: BasicEvent
@@ -157,8 +166,6 @@ rename:
   - from: Timeline
     base: EventFilter
     to: StateFilter
-  - from: GetConfigResponse
-    to: ServerConfig
   - from: GetTurnServerResponse
     to: TurnServerCredentials
   - from: RequestOpenIdTokenResponse
@@ -232,9 +239,6 @@ rename:
   - from: Algorithm
     usedBy: getRoomKeysVersionCurrent
     to: BackupAlgorithm
-  - from: Type
-    usedBy: login
-    to: LoginType
   - from: Medium
     enum: true
     to: ThirdPartyIdentifierMedium

@@ -1,0 +1,103 @@
+# so that they generate a `FileResponse` signature correctly
+diff --git a/data/api/client-server/authed-content-repo.yaml b/data/api/client-server/authed-content-repo.yaml
+index 43cb5881..cef2cbde 100644
+--- a/data/api/client-server/authed-content-repo.yaml
++++ b/data/api/client-server/authed-content-repo.yaml
+@@ -52,6 +52,7 @@ paths:
+           content:
+             application/octet-stream:
+               schema:
++                type: file
+                 # This is a workaround for us not being able to say the response is required.
+                 description: "**Required.** The bytes for the uploaded file."
+         "307":
+@@ -114,6 +115,7 @@ paths:
+           content:
+             application/octet-stream:
+               schema:
++                type: file
+                 # This is a workaround for us not being able to say the response is required.
+                 description: "**Required.** The bytes for the uploaded file."
+         "307":
+@@ -221,10 +223,12 @@ paths:
+           content:
+             image/jpeg:
+               schema:
++                type: file
+                 # This is a workaround for us not being able to say the response is required.
+                 description: "**Required.** The bytes for the thumbnail."
+             image/png:
+               schema:
++                type: file
+                 x-changedInMatrixVersion:
+                   "1.11": The PNG may be of the APNG variety if animation is supported and requested.
+                 description: |
+@@ -232,14 +236,17 @@ paths:
+                   format if `animated=true`.
+             image/apng:
+               schema:
++                type: file
+                 x-addedInMatrixVersion: "1.11"
+                 description: "**Required.** The bytes for the *animated* thumbnail."
+             image/gif:
+               schema:
++                type: file
+                 x-addedInMatrixVersion: "1.11"
+                 description: "**Required.** The bytes for the *animated* thumbnail."
+             image/webp:
+               schema:
++                type: file
+                 x-addedInMatrixVersion: "1.11"
+                 description: "**Required.** The bytes for the *animated* thumbnail."
+         "307":
+diff --git a/data/api/client-server/content-repo.yaml b/data/api/client-server/content-repo.yaml
+index 92ca6caa..190656fd 100644
+--- a/data/api/client-server/content-repo.yaml
++++ b/data/api/client-server/content-repo.yaml
+@@ -254,6 +254,7 @@ paths:
+           content:
+             application/octet-stream:
+               schema:
++                type: file
+                 # This is a workaround for us not being able to say the response is required.
+                 description: "**Required.** The bytes for the uploaded file."
+         "307":
+@@ -317,6 +318,7 @@ paths:
+           content:
+             application/octet-stream:
+               schema:
++                type: file
+                 # This is a workaround for us not being able to say the response is required.
+                 description: "**Required.** The bytes for the uploaded file."
+         "307":
+@@ -425,10 +427,12 @@ paths:
+           content:
+             image/jpeg:
+               schema:
++                type: file
+                 # This is a workaround for us not being able to say the response is required.
+                 description: "**Required.** The bytes for the thumbnail."
+             image/png:
+               schema:
++                type: file
+                 x-changedInMatrixVersion:
+                   "1.11": The PNG may be of the APNG variety if animation is supported and requested.
+                 description: |
+@@ -436,14 +440,17 @@ paths:
+                   format if `animated=true`.
+             image/apng:
+               schema:
++                type: file
+                 x-addedInMatrixVersion: "1.11"
+                 description: "**Required.** The bytes for the *animated* thumbnail."
+             image/gif:
+               schema:
++                type: file
+                 x-addedInMatrixVersion: "1.11"
+                 description: "**Required.** The bytes for the *animated* thumbnail."
+             image/webp:
+               schema:
++                type: file
+                 x-addedInMatrixVersion: "1.11"
+                 description: "**Required.** The bytes for the *animated* thumbnail."
+         "307":
