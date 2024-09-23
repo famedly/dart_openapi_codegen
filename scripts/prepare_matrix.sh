@@ -34,6 +34,9 @@ git apply ../scripts/one-time-keys-hack.patch
 
 echo "Applying third party missing types patch"
 git apply ../scripts/third-party-missing-type.patch
+
+echo "Applying opengraph data url preview patch"
+git apply ../scripts/add-opengraph-data-url-preview.patch
 )
 fi
 
