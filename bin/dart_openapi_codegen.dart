@@ -16,7 +16,9 @@ String className(String s) => fixup(s
     .map((x) => x.capitalized)
     .join(''));
 
-String variableName(String s) => className(s).uncapitalized;
+// TODO: maybe make the keyword escape more robust later
+String variableName(String s) =>
+    s == 'override' ? 'overrideField' : className(s).uncapitalized;
 
 String fixup(String s) =>
     ['default', 'is'].contains(s.toLowerCase()) ? s + '\$' : s;
@@ -235,6 +237,14 @@ class ObjectSchema extends DefinitionSchema {
           .map((e) =>
               '${e.value.description?.replaceAll(RegExp('^|\n'), '\n  /// ') ?? ''}\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
           .join('') +
+      '\n@override\n'
+          'bool operator ==(Object other) => other is $dartType ${allProperties.keys.isNotEmpty ? '&&' : ''}  ${allProperties.keys.map(
+                (e) => 'other.${variableName(e)} == ${variableName(e)}',
+              ).join('&&')};\n\n' +
+      '@override\n'
+          'int get hashCode => ${allProperties.keys.length == 1 ? '${variableName(allProperties.keys.first)}.hashCode;' : 'Object.hash(${allProperties.keys.map(
+                (e) => variableName(e),
+              ).join(',')}) ;'}\n\n' +
       '}\n';
   @override
   List<DefinitionSchema> get definitionSchemas => properties.values
