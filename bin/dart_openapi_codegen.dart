@@ -235,6 +235,14 @@ class ObjectSchema extends DefinitionSchema {
           .map((e) =>
               '${e.value.description?.replaceAll(RegExp('^|\n'), '\n  /// ') ?? ''}\n  ${e.value.schema.dartType} ${variableName(e.key)};\n')
           .join('') +
+      '\n@dart.override\n'
+          'bool operator ==(Object other) => identical(this, other) || (other is $dartType && other.runtimeType == runtimeType ${allProperties.keys.isNotEmpty ? '&&' : ''}  ${allProperties.keys.map(
+                (e) => 'other.${variableName(e)} == ${variableName(e)}',
+              ).join('&&')});\n\n' +
+      '@dart.override\n'
+          'int get hashCode => ${allProperties.keys.length == 1 ? '${variableName(allProperties.keys.first)}.hashCode;' : 'Object.hash(${allProperties.keys.map(
+                (e) => variableName(e),
+              ).join(',')}) ;'}\n\n' +
       '}\n';
   @override
   List<DefinitionSchema> get definitionSchemas => properties.values
@@ -921,7 +929,7 @@ void numberConflicts(List<Operation> operations) {
 }
 
 String generateModel(List<Operation> operations) {
-  return "import 'internal.dart';\nimport 'package:enhanced_enum/enhanced_enum.dart';\npart 'model.g.dart';\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
+  return "import 'dart:core' as dart; import 'dart:core'; import 'internal.dart';\nimport 'package:enhanced_enum/enhanced_enum.dart';\npart 'model.g.dart';\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
       operations
           .expand((op) => op.definitionSchemas)
           .toSet()
