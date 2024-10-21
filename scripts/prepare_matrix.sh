@@ -4,7 +4,7 @@ then
 git clone https://github.com/matrix-org/matrix-spec.git
 (
 cd matrix-spec
-git checkout v1.11
+git checkout v1.12
 echo "Applying media upload format patch"
 git apply ../scripts/media-upload-format.patch
 
