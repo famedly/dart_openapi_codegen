@@ -1,0 +1,50 @@
+# add selected opengraph attributes to the preview_url_endpoint
+diff --git a/data/api/client-server/authed-content-repo.yaml b/data/api/client-server/authed-content-repo.yaml
+--- a/data/api/client-server/authed-content-repo.yaml	(revision 1fc8f8856fe47849f90344cfa91601c984627acb)
++++ b/data/api/client-server/authed-content-repo.yaml	(date 1727100324804)
+@@ -348,6 +348,45 @@
+                     format: uri
+                     description: An [`mxc://` URI](/client-server-api/#matrix-content-mxc-uris) to
+                       the image. Omitted if there is no image.
++                  og:title:
++                    type: string
++                    description: The title of your object as it should appear within the graph, e.g., "The Rock".
++                  og:description:
++                    type: string
++                    description: A one to two sentence description of your object.
++                  og:determiner:
++                    type: string
++                    description: |-
++                      The word that appears before this object's title in a sentence.
++                      An enum of (a, an, the, "", auto). If auto is chosen,
++                      the consumer of your data should chose
++                      between "a" or "an". Default is "" (blank).
++                  og:locale:
++                    type: string
++                    description: |-
++                      The locale these tags are marked up in. Of the format language_TERRITORY.
++                      Default is en_US.
++                  og:site_name:
++                    type: string
++                    description: |-
++                      If your object is part of a larger web site,
++                      the name which should be displayed for the overall site.
++                  og:image:type:
++                    type: string
++                    description: The MIME type of the image, e.g., "image/png".
++                  og:image:height:
++                    type: integer
++                    format: int64
++                    description: The height of the image, in pixels.
++                  og:image:width:
++                    type: integer
++                    format: int64
++                    description: The width of the image, in pixels.
++                  og:image:alt:
++                    type: string
++                    description: |-
++                      A description of what is in the image (not a caption).
++                      If the page specifies an og:image it should specify og:image:alt.
+               examples:
+                 response:
+                   value: {
