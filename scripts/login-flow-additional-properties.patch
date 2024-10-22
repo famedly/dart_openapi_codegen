@@ -1,0 +1,14 @@
+# Allow additional properties for the LoginFlow type:
+diff --git a/data/api/client-server/login.yaml b/data/api/client-server/login.yaml
+index 385eb33b..2fb23d04 100644
+--- a/data/api/client-server/login.yaml
++++ b/data/api/client-server/login.yaml
+@@ -41,6 +41,7 @@ paths:
+                       title: LoginFlow
+                       required:
+                         - type
++                      additionalProperties: true
+                       properties:
+                         type:
+                           description: |-
+                           
