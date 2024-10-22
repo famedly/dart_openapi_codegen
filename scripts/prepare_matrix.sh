@@ -34,6 +34,9 @@ git apply ../scripts/one-time-keys-hack.patch
 
 echo "Applying third party missing types patch"
 git apply ../scripts/third-party-missing-type.patch
+
+echo "Applying additional properties for LoginFlow patch"
+git apply ../scripts/login-flow-additional-properties.patch
 )
 fi
 
