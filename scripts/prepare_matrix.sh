@@ -37,6 +37,10 @@ git apply ../scripts/third-party-missing-type.patch
 
 echo "Applying additional properties for LoginFlow patch"
 git apply ../scripts/login-flow-additional-properties.patch
+
+echo "Applying authentication for profile requests patch"
+git apply ../scripts/auth-profile.patch
+
 )
 fi
 

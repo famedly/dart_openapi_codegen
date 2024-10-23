@@ -1,0 +1,50 @@
+# Add optional authentication to get profile requests
+diff --git a/data/api/client-server/profile.yaml b/data/api/client-server/profile.yaml
+index 6e588ae3..0dcd0910 100644
+--- a/data/api/client-server/profile.yaml
++++ b/data/api/client-server/profile.yaml
+@@ -73,6 +73,10 @@ paths:
+         own displayname or to query the name of other users; either locally or
+         on remote homeservers.
+       operationId: getDisplayName
++      security:
++        - {}
++        - accessTokenQuery: []
++        - accessTokenBearer: []
+       parameters:
+         - in: path
+           name: userId
+@@ -123,6 +127,10 @@ paths:
+         This API sets the given user's avatar URL. You must have permission to
+         set this user's avatar URL, e.g. you need to have their `access_token`.
+       operationId: setAvatarUrl
++      security:
++        - {}
++        - accessTokenQuery: []
++        - accessTokenBearer: []
+       security:
+         - accessTokenQuery: []
+         - accessTokenBearer: []
+@@ -174,6 +182,10 @@ paths:
+         own avatar URL or to query the URL of other users; either locally or
+         on remote homeservers.
+       operationId: getAvatarUrl
++      security:
++        - {}
++        - accessTokenQuery: []
++        - accessTokenBearer: []
+       parameters:
+         - in: path
+           name: userId
+@@ -225,6 +237,10 @@ paths:
+         to fetch the user's own profile information or other users; either
+         locally or on remote homeservers.
+       operationId: getUserProfile
++      security:
++        - {}
++        - accessTokenQuery: []
++        - accessTokenBearer: []
+       parameters:
+         - in: path
+           name: userId
+           
