@@ -7,9 +7,11 @@ sed -i'.bakmacoscompat' s/RoomKeysRequired/RoomKeys/g "$1"/api.dart
 cd "$1"
 dart pub get
 flutter pub run build_runner build --delete-conflicting-outputs
-dart fix --apply
-dart format -o write .
 flutter pub run import_sorter:main --no-comments
-# add any fixes after formatting
+dart format .
 dart fix --apply
-
+dart format .
+dart fix --apply
+flutter pub run import_sorter:main --no-comments
+dart format .
+dart fix --apply
