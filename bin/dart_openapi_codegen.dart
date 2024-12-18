@@ -405,7 +405,7 @@ class EnumSchema extends DefinitionSchema {
   @override
   String get definition =>
       super.definition +
-      '@EnhancedEnum()\nenum $dartType {\n  ${(values.toList()..sort()).map((v) => '@EnhancedEnumValue(name: \'$v\')\n' + variableName(v)).join(',\n')}\n}\n';
+      'enum $dartType {\n  ${(values.toList()..sort()).map((v) => '${variableName(v)}(\'$v\')\n').join(',\n')};\n  final String name;\n  const $dartType(this.name);\n}\n';
   @override
   List<DefinitionSchema> get definitionSchemas => [this];
 
@@ -764,7 +764,9 @@ List<Operation> operationsFromApi(Map<String, Object?> api) {
         'options',
         'head',
         'trace',
-      }.contains(method.toLowerCase())) return;
+      }.contains(method.toLowerCase())) {
+        return;
+      }
       final operationId = (mcontent as Map<String, Object?>)['operationId'] ??
           '${path.split('/').last}$method';
 
@@ -929,7 +931,7 @@ void numberConflicts(List<Operation> operations) {
 }
 
 String generateModel(List<Operation> operations) {
-  return "import 'dart:core' as dart; import 'dart:core'; import 'internal.dart';\nimport 'package:enhanced_enum/enhanced_enum.dart';\npart 'model.g.dart';\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
+  return "import 'dart:core' as dart; import 'dart:core'; import 'internal.dart';\npart 'model.g.dart';\nclass _NameSource { final String source; const _NameSource(this.source); }\n\n" +
       operations
           .expand((op) => op.definitionSchemas)
           .toSet()
