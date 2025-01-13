@@ -62,7 +62,8 @@ voidResponse:
   - deleteRoomTag
   - setAccountData
   - setAccountDataPerRoom
-  - reportContent
+  - reportEvent
+  - reportRoom
   - updateRoomKeysBackup
   - deleteRoomKeysBackup
   - uploadCrossSigningKeys

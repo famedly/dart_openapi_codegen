@@ -4,7 +4,7 @@ then
 git clone https://github.com/matrix-org/matrix-spec.git
 (
 cd matrix-spec
-git checkout v1.12
+git checkout v1.13
 echo "Applying media upload format patch"
 git apply ../scripts/media-upload-format.patch
 
@@ -31,9 +31,6 @@ git apply ../scripts/relations.patch
 
 echo "Applying one time keys hack"
 git apply ../scripts/one-time-keys-hack.patch
-
-echo "Applying third party missing types patch"
-git apply ../scripts/third-party-missing-type.patch
 
 echo "Applying additional properties for LoginFlow patch"
 git apply ../scripts/login-flow-additional-properties.patch
