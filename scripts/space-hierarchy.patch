@@ -1,0 +1,24 @@
+diff --git a/data/api/client-server/space_hierarchy.yaml b/data/api/client-server/space_hierarchy.yaml
+index 5f6657a2..41a8af18 100644
+--- a/data/api/client-server/space_hierarchy.yaml
++++ b/data/api/client-server/space_hierarchy.yaml
+@@ -126,13 +126,15 @@ paths:
+                                     required:
+                                       - origin_server_ts
+                             room_type:
+-                              x-addedInMatrixVersion: "1.4" # Extends room_summary.yaml
++                              type: string
+                             allowed_room_ids:
+-                              x-addedInMatrixVersion: "1.15" # Extends room_summary.yaml
++                              type: array
++                              items:
++                                type: string
+                             encryption:
+-                              x-addedInMatrixVersion: "1.15" # Extends room_summary.yaml
++                              type: string
+                             room_version:
+-                              x-addedInMatrixVersion: "1.15" # Extends room_summary.yaml
++                              type: string
+                           required:
+                             - children_state
+                   next_batch:

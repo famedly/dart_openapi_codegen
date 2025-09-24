@@ -1,10 +1,9 @@
 #!/bin/sh -e
 if ! [ -d matrix-spec ]
 then
-git clone https://github.com/matrix-org/matrix-spec.git
+git clone https://github.com/matrix-org/matrix-spec.git --branch v1.16 --single-branch
 (
 cd matrix-spec
-git checkout v1.14
 echo "Applying media upload format patch"
 git apply ../scripts/media-upload-format.patch
 
@@ -38,10 +37,22 @@ git apply ../scripts/login-flow-additional-properties.patch
 echo "Applying authentication for profile requests patch"
 git apply ../scripts/auth-profile.patch
 
+echo "Applying no enum for room summary encryption algorithm"
+git apply ../scripts/room-summary-encryption.patch
+
+echo "Applying no one of patch"
+git apply ../scripts/no-one-of.patch
+
+echo "Applying get room state"
+git apply ../scripts/get-room-state.patch
+
+echo "Applying space hierarchy patch"
+git apply ../scripts/space-hierarchy.patch
+
 )
 fi
 
-(cd matrix-spec && python3 -m venv sourcegen; source sourcegen/bin/activate; pip3 install -r scripts/requirements.txt &&  python3 ./scripts/dump-openapi.py && deactivate)
+(cd matrix-spec && python3.12 -m venv sourcegen; source sourcegen/bin/activate; pip3 install -r scripts/requirements.txt &&  python3.12 ./scripts/dump-openapi.py && deactivate)
 rm -f matrix.json
 < matrix-spec/scripts/openapi/api-docs.json \
 sed 's`](/`](https://spec.matrix.org/unstable/`g' |

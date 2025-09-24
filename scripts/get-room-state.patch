@@ -1,0 +1,15 @@
+diff --git a/data/api/client-server/rooms.yaml b/data/api/client-server/rooms.yaml
+index a5c9977e..f12b2d67 100644
+--- a/data/api/client-server/rooms.yaml
++++ b/data/api/client-server/rooms.yaml
+@@ -127,9 +127,7 @@ paths:
+           content:
+             application/json:
+               schema:
+-                oneOf:
+-                  - type: object
+-                  - $ref: "../../event-schemas/schema/core-event-schema/state_event.yaml"
++                type: object
+               examples:
+                 response:
+                   value: {

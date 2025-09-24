@@ -1,0 +1,20 @@
+diff --git a/data/api/client-server/room_summary.yaml b/data/api/client-server/room_summary.yaml
+index e8ee3c8e..5d7c8a3e 100644
+--- a/data/api/client-server/room_summary.yaml
++++ b/data/api/client-server/room_summary.yaml
+@@ -45,14 +45,7 @@ paths:
+           description: The room identifier or alias to summarise.
+           required: true
+           example: "#monkeys:matrix.org"
+-          schema:
+-            oneOf:
+-              - type: string
+-                format: mx-room-id
+-                pattern: "^!"
+-              - type: string
+-                format: mx-room-alias
+-                pattern: "^#"
++          type: string
+         - in: query
+           name: via
+           description: |-

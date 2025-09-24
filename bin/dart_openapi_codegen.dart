@@ -281,7 +281,7 @@ class ObjectSchema extends DefinitionSchema {
                 .map((k, v) => MapEntry(
                     k,
                     ObjectParam.fromJson(
-                        v as Map<String, Object?>, className(k),
+                        v is Map<String, Object?> ? v : {}, className(k),
                         required: json['required'] != null
                             ? (json['required'] as List<Object?>).contains(k)
                             : false)))),
@@ -350,10 +350,10 @@ class MapSchema extends Schema {
   MapSchema.fromJson(Map<String, Object?> json, String baseName)
       // yes ik what if both additionalProperties and patternProperties popup
       // at the same time? guess what, you have to fix it now!
-      : valueSchema = json['additionalProperties'] != null
+      : valueSchema = json['additionalProperties'] is Map<String, Object?>
             ? Schema.fromJson(
                 json['additionalProperties'] as Map<String, Object?>, baseName)
-            : json['patternProperties'] != null
+            : json['patternProperties'] is Map<String, Object?>
                 ? Schema.fromJson(
                     (json['patternProperties'] as Map<String, Object?>)
                         .values
