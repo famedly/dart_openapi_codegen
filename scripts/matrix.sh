@@ -8,7 +8,7 @@ cd "$1"
 dart pub get
 flutter pub run build_runner build --delete-conflicting-outputs
 dart fix --apply
-dart format -o write .
+dart format ./
 flutter pub run import_sorter:main --no-comments
 # add any fixes after formatting
 dart fix --apply

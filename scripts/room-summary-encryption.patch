@@ -1,0 +1,13 @@
+diff --git a/data/api/client-server/definitions/room_summary.yaml b/data/api/client-server/definitions/room_summary.yaml
+index cdcfb7cd..00d75712 100644
+--- a/data/api/client-server/definitions/room_summary.yaml
++++ b/data/api/client-server/definitions/room_summary.yaml
+@@ -34,8 +34,6 @@ allOf:
+           are specified by the join rules. Empty or omitted otherwise.
+       encryption:
+         type: string
+-        enum:
+-          - "m.megolm.v1.aes-sha2"
+         description: |-
+           The encryption algorithm to be used to encrypt messages sent in the
+           room.
