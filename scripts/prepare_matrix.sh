@@ -49,6 +49,9 @@ git apply ../scripts/get-room-state.patch
 echo "Applying space hierarchy patch"
 git apply ../scripts/space-hierarchy.patch
 
+echo "Applying MSC4191 auth metadata patch"
+git apply ../scripts/msc4191-auth-metadata.patch
+
 )
 fi
 
