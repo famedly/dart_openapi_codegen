@@ -33,6 +33,6 @@ pub run dart_openapi_codegen ./lib/src/generated ./openapi.json
 
 To update the generated code in [matrix_api_lite](https://github.com/famedly/dart_matrix_api_lite), use the script:
 ```
-./scripts/matrix.sh ../dart_matrix_api_lite/lib/src/generated
+./scripts/matrix.sh ../matrix-dart-sdk/lib/matrix_api_lite/generated/
 ```
 The script clones and patches `matrix-doc` and generates code using the rules in `rules/matrix.yaml`.
