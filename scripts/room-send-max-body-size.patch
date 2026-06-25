@@ -1,10 +1,10 @@
 diff --git a/data/api/client-server/room_send.yaml b/data/api/client-server/room_send.yaml
-index 25d8a75b..530c4105 100644
+index 7393d440..b0bd292e 100644
 --- a/data/api/client-server/room_send.yaml
 +++ b/data/api/client-server/room_send.yaml
-@@ -29,6 +29,7 @@ paths:
-         fields in this object will vary depending on the type of event. See
-         [Room Events](/client-server-api/#room-events) for the m. event specification.
+@@ -38,6 +38,7 @@ paths:
+         MUST move the `redacts` property inside the `content` to the top level of
+         the event.
        operationId: sendMessage
 +      maxBodySize: 60000 # MAX_PDU_SIZE
        security:
