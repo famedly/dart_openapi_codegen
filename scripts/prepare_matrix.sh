@@ -1,7 +1,7 @@
 #!/bin/sh -e
 if ! [ -d matrix-spec ]
 then
-git clone https://github.com/matrix-org/matrix-spec.git --branch v1.18 --single-branch
+git clone https://github.com/matrix-org/matrix-spec.git --branch v1.19 --single-branch
 (
 cd matrix-spec
 echo "Applying media upload format patch"
